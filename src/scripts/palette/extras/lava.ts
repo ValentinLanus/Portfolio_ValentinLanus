@@ -1,6 +1,7 @@
 import type { Gsap } from '../../motion/types';
 import { dispose } from '../dispose';
 import type { Extra } from '../extras';
+import { fitZone } from '../zone';
 
 // Lava: una lámpara de lava.
 //   - Un filtro SVG "goo" (#fx-goo) funde entre sí las burbujas de una capa detrás del hero cuando
@@ -95,6 +96,8 @@ function bubbles(): () => void {
     layer.append(bubble);
   }
   hero.prepend(layer);
+  // La columna de la derecha solo existe mientras haya lugar a la derecha del texto (zone.ts).
+  const fit = fitZone(hero, layer);
 
   // Si el navegador junta varios avisos de una vez, vale el último: es el estado actual del hero.
   const watcher = new IntersectionObserver((entries) => {
@@ -102,6 +105,7 @@ function bubbles(): () => void {
   });
   watcher.observe(hero);
   return () => {
+    fit();
     watcher.disconnect();
     layer.remove();
   };

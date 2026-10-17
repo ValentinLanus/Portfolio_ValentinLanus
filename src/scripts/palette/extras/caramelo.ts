@@ -2,6 +2,7 @@ import type { Gsap } from '../../motion/types';
 import { visualClone } from '../a11y';
 import { dispose } from '../dispose';
 import type { Extra, ExtraCtx } from '../extras';
+import { fitZone } from '../zone';
 
 // Caramelo: golosina, todo rebota.
 //   - Las letras del nombre hacen una ola con un resorte de motion: una por una, hacia arriba y de
@@ -218,7 +219,12 @@ function blobs(): () => void {
     layer.append(blob);
   }
   hero.prepend(layer);
-  return () => layer.remove();
+  // La columna de la derecha solo existe mientras haya lugar a la derecha del texto (zone.ts).
+  const fit = fitZone(hero, layer);
+  return () => {
+    fit();
+    layer.remove();
+  };
 }
 
 /**

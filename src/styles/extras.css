@@ -125,16 +125,23 @@ main:has(.fx-blobs, .fx-lava) {
   z-index: -1;
   pointer-events: none;
 }
-/* Pantalla ancha: el texto ocupa la parte izquierda (el párrafo corta a 52ch) y la derecha está
-   libre, de la barra hacia abajo. 64 % deja unos 45 px de aire con el párrafo en 1200 px. */
+/* Pantalla ancha: la derecha del texto está libre, de la barra hacia abajo, y la capa pasa a ser una
+   columna ahí. Dos condiciones, las dos necesarias:
+   - el contenedor (@container, en em): con letra más grande el mismo ancho vale menos em, así que
+     el zoom de texto manda la capa a la franja de arriba aunque la ventana sea ancha;
+   - `data-side`, que pone zone.ts cuando MIDIÓ que a la derecha del texto hay lugar. De esa
+     medición sale `--fx-left`: el borde izquierdo de la columna es el borde derecho real del texto
+     (párrafo, rol, nombre, botones) más un margen, y 64 % es el mínimo (el diseño a 100 %). Sin
+     `data-side` la capa sigue siendo la franja de arriba. Así la columna no pisa el texto por
+     construcción, sea cual sea el tamaño de letra, el idioma o la copia. */
 @media (min-height: 560px) {
   @container fx-hero (min-width: 59em) {
-    .fx-blobs,
-    .fx-lava {
+    .fx-blobs[data-side],
+    .fx-lava[data-side] {
       position: absolute;
       top: calc(var(--nav-h) + 2rem);
       bottom: 3rem;
-      left: 64%;
+      left: max(64%, var(--fx-left, 0px));
       right: 0;
     }
   }
@@ -198,20 +205,23 @@ html[data-palette='caramelo'] .hero__title.fx-wave .line {
   animation: fx-float-c 11s ease-in-out infinite alternate;
 }
 /* Pantalla ancha: la zona es una columna alta y angosta a la derecha del texto, y las formas se
-   apilan en vertical. */
+   apilan en vertical. Ninguna se asoma por la izquierda de la columna (ahí está el texto; el borde
+   izquierdo de la columna ya trae su margen): el blob 2 arranca en el borde y su rotación y su
+   desplazamiento hacia la derecha compensan lo que la rotación le suma. Por la derecha el blob 1
+   sí puede salirse: lo recorta el borde de la ventana. */
 @media (min-height: 560px) {
   @container fx-hero (min-width: 59em) {
-    .fx-blob:nth-child(1) {
+    .fx-blobs[data-side] .fx-blob:nth-child(1) {
       width: 78cqmin;
       top: 4cqh;
       right: -6cqw;
     }
-    .fx-blob:nth-child(2) {
+    .fx-blobs[data-side] .fx-blob:nth-child(2) {
       width: 50cqmin;
       top: 46cqh;
-      left: -4cqw;
+      left: 0;
     }
-    .fx-blob:nth-child(3) {
+    .fx-blobs[data-side] .fx-blob:nth-child(3) {
       width: 32cqmin;
       top: auto;
       bottom: 6cqh;
@@ -327,25 +337,25 @@ html[data-palette='caramelo'] .hero__title.fx-wave .line {
    y suben y bajan por toda la columna. */
 @media (min-height: 560px) {
   @container fx-hero (min-width: 59em) {
-    .fx-bubble:nth-child(1) {
+    .fx-lava[data-side] .fx-bubble:nth-child(1) {
       width: 58cqmin;
       left: 4cqw;
       top: 4cqh;
       animation-name: fx-rise-a;
     }
-    .fx-bubble:nth-child(2) {
+    .fx-lava[data-side] .fx-bubble:nth-child(2) {
       width: 42cqmin;
       left: 46cqw;
       top: 38cqh;
       animation-name: fx-rise-b;
     }
-    .fx-bubble:nth-child(3) {
+    .fx-lava[data-side] .fx-bubble:nth-child(3) {
       width: 30cqmin;
       left: 14cqw;
       top: 64cqh;
       animation-name: fx-rise-c;
     }
-    .fx-bubble:nth-child(4) {
+    .fx-lava[data-side] .fx-bubble:nth-child(4) {
       width: 26cqmin;
       left: 60cqw;
       top: 8cqh;
