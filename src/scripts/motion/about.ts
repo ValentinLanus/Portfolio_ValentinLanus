@@ -5,8 +5,10 @@ export const about: MotionModule = (gsap, _st, { desktop }) => {
   const section = document.querySelector<HTMLElement>('[data-about]');
   if (!section) return;
   if (desktop) {
+    // El piso se lee del token de la paleta activa: un gris fijo no llega a AA sobre Arcade ni Caramelo.
+    const floor = getComputedStyle(document.documentElement).getPropertyValue('--text-3').trim();
     gsap.from(section.querySelectorAll('.w'), {
-      color: '#7a837d',
+      color: floor,
       stagger: 0.1,
       ease: 'none',
       scrollTrigger: {

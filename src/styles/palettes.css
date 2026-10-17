@@ -1,0 +1,107 @@
+/* Paletas seleccionables. Terminal (la base) vive en tokens.css; acá están las otras cuatro.
+
+   Una paleta cambia colores, tipografía de títulos, decoraciones y movimiento. Nunca el layout
+   ni el contenido.
+
+   Dos tipos de regla, a propósito:
+   - [data-palette='x']       define tokens. Vale para <html> y para cualquier elemento que lleve
+                              el atributo (muestras del selector, cortinas): ese elemento y sus
+                              hijos toman esos colores aunque la página esté en otra paleta.
+   - html[data-palette='x']   toca la página entera (tamaño o peso de los títulos).
+
+   Cada bloque redefine TODOS los tokens: un token heredado de otra paleta se vería como un
+   error. --accent-2 es el segundo color de la paleta (decorativo, y apto para texto cuando se
+   indica). Contraste verificado con axe en / y /en (WCAG AA). */
+
+/* Arcade: 8 bits sobre azul noche. El rojo #ff004d queda solo para decoración o texto grande
+   (3.5:1 sobre el fondo), por eso no es un token. */
+[data-palette='arcade'] {
+  color-scheme: dark;
+  --bg: #1d2b53;
+  --surface: #25336a;
+  --surface-2: #2c3b78;
+  --text: #fff1e8;
+  --text-2: #c2c3c7;
+  --text-3: #a3a7c2;
+  --accent: #ffec27;
+  --accent-2: #29adff;
+  --border: #2f3d70;
+  --border-ui: #6b78a8;
+  --font-display: 'Silkscreen', var(--font-mono);
+}
+
+/* Caramelo: la única clara. Violeta sobre rosa pálido; el naranja es decorativo (2.1:1). */
+[data-palette='caramelo'] {
+  color-scheme: light;
+  --bg: #fff1f6;
+  --surface: #ffe4ee;
+  --surface-2: #ffd6e6;
+  --text: #2a1440;
+  --text-2: #5a4470;
+  --text-3: #6e5a80;
+  --accent: #7b3fe4;
+  --accent-2: #ff8a3d;
+  --border: #f2bfd3;
+  --border-ui: #8f72a8;
+  --font-display: 'Fredoka Variable', var(--font-sans);
+}
+
+/* Lava: ciruela casi negra con naranja encendido; el magenta acompaña. */
+[data-palette='lava'] {
+  color-scheme: dark;
+  --bg: #1a0b1f;
+  --surface: #241029;
+  --surface-2: #2e1534;
+  --text: #ffe9dc;
+  --text-2: #d9b8a8;
+  --text-3: #b08f9a;
+  --accent: #ff6b35;
+  --accent-2: #d94bff;
+  --border: #3d1f45;
+  --border-ui: #7a5a86;
+  --font-display: var(--font-sans);
+}
+
+/* Atardecer: violeta crepuscular con ámbar; el coral es el segundo color del cielo. */
+[data-palette='atardecer'] {
+  color-scheme: dark;
+  --bg: #2b1a2e;
+  --surface: #36223a;
+  --surface-2: #402a44;
+  --text: #fff1e0;
+  --text-2: #e0c3b0;
+  --text-3: #b89a92;
+  --accent: #ffb347;
+  --accent-2: #ff8fa3;
+  --border: #46304a;
+  --border-ui: #85698a;
+  --font-display: var(--font-sans);
+}
+
+/* Títulos. Los componentes fijan peso e interletra en su CSS con scope (.hero__title, etc.),
+   que pesa más que un selector de tipo: por eso :not(.mono) sube la especificidad (y deja
+   afuera los h3 con aspecto de etiqueta mono, que no son títulos). */
+
+/* Silkscreen solo se carga en 400: con 600 el navegador fabricaría una negrita falsa. Es una
+   fuente de píxeles y ancha: sin interletra negativa, y con más altura de línea porque sus
+   acentos sobresalen del cuadro y el hero los recorta (.line tiene overflow: hidden). */
+html[data-palette='arcade'] :is(h1, h2, h3):not(.mono) {
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
+/* Cada "píxel" de Silkscreen mide 1/8 em: con el tamaño en múltiplos de 8px el borde de cada
+   píxel cae justo en la grilla de la pantalla y no se ve borroso a ningún ancho. Mismas curvas
+   que tokens.css; si cambian allá, cambian acá. */
+@supports (width: round(down, 1px, 1px)) {
+  html[data-palette='arcade'] {
+    --fs-h1: round(down, clamp(2.5rem, 1.2rem + 6vw, 6.5rem), 8px);
+    --fs-h2: round(down, clamp(1.75rem, 1rem + 3vw, 3.5rem), 8px);
+  }
+}
+
+/* Fredoka ya es redonda y gruesa: la interletra apretada de Geist la pegaría. */
+html[data-palette='caramelo'] :is(h1, h2, h3):not(.mono) {
+  letter-spacing: -0.015em;
+}
