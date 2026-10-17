@@ -1,3 +1,4 @@
+import { startExtras } from '../palette/extras';
 import { about } from './about';
 import { contact } from './contact';
 import { initLenis } from './lenis';
@@ -52,6 +53,14 @@ async function start() {
         } catch (err) {
           console.error('[motion]', err);
         }
+      }
+      // Extras de la paleta activa (tipeo de Terminal, scanlines de Arcade...). Van después de los
+      // módulos: sus triggers se miden con el pin de Lotecito ya armado. Con reduced motion no
+      // se llega acá (se sale antes), así que no se crea ni se descarga nada.
+      try {
+        cleanups.push(startExtras({ gsap, ScrollTrigger, desktop }));
+      } catch (err) {
+        console.error('[motion]', err);
       }
       return () => cleanups.forEach((off) => off());
     },

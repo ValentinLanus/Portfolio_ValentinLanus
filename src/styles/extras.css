@@ -1,0 +1,89 @@
+/* Extras de paleta (scripts/palette/extras/*). Solo estilos de lo que crean o marcan los scripts:
+   no hay <style> inline (la CSP los bloquea) y todo lo decorativo lleva clase fx-*, aria-hidden y
+   se quita en el cleanup. Con prefers-reduced-motion los extras ni arrancan: no existe ningún fx-*.
+
+   Capas: nav 50, menú mobile 60, barra de progreso 70, scanlines 80, cortina y confeti 90,
+   skip-link 100 (ver también curtains.css). */
+
+/* ---- Terminal: el rol se escribe con un cursor de bloque ---------------------------------- */
+
+/* Lo que falta escribir ocupa su lugar pero no se ve: el texto no se reacomoda al avanzar. */
+.fx-rest {
+  visibility: hidden;
+}
+
+/* El cursor es un inline vacío (sin ancho): no agrega ni quita oportunidades de salto de línea,
+   así que el texto parte igual que el original. El bloque se dibuja en ::after, absoluto.
+   Color: --accent sobre --bg, 11:1 en Terminal (componente gráfico, mínimo 3:1). */
+.fx-caret {
+  position: relative;
+}
+.fx-caret::after {
+  content: '';
+  position: absolute;
+  left: 0.15em;
+  top: 0.12em;
+  bottom: 0.12em;
+  width: 0.6ch;
+  background: var(--accent);
+  /* Al terminar de escribir titila cuatro veces (menos de 5 s, WCAG 2.2.2) y queda fijo. */
+  animation: fx-blink 1.1s steps(1, end) 4;
+}
+.fx-caret[data-typing]::after {
+  animation: none;
+}
+@keyframes fx-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ---- Arcade: scanlines y barra de energía ------------------------------------------------- */
+
+/* Una línea de 1px cada 4px, de un azul casi negro (el del fondo, no negro puro) y poco opaca:
+   se nota como textura pero no baja el contraste del texto de forma apreciable. Sin puntero. */
+.fx-scanlines {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgb(6 10 30 / 0.15) 0 1px, transparent 1px 4px);
+}
+
+/* La barra de progreso se parte en bloques. Su ancho crece con scaleX, que estira la máscara:
+   los anchos se dividen por --p (progreso, lo mantiene arcade.ts) para que en pantalla cada
+   bloque mida siempre --block y el paso sea --pitch. */
+/* Con .progress y [data-progress] por delante: el CSS con scope de ProgressBar.astro (height: 2px)
+   pesa más que una sola clase. */
+.progress.progress--blocks[data-progress] {
+  --block: 12px;
+  --pitch: 16px;
+  height: 8px;
+  -webkit-mask-image: repeating-linear-gradient(
+    to right,
+    #000 0 calc(var(--block) / var(--p, 1)),
+    transparent calc(var(--block) / var(--p, 1)) calc(var(--pitch) / var(--p, 1))
+  );
+  mask-image: repeating-linear-gradient(
+    to right,
+    #000 0 calc(var(--block) / var(--p, 1)),
+    transparent calc(var(--block) / var(--p, 1)) calc(var(--pitch) / var(--p, 1))
+  );
+}
+
+/* El marcador no cambia de ancho al contar (los dígitos van con ceros a la izquierda). */
+.fx-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Modos que piden menos efectos o colores propios: las scanlines no van. */
+@media (forced-colors: active), (prefers-contrast: more), print {
+  .fx-scanlines {
+    display: none;
+  }
+}
+@media (forced-colors: active) {
+  .fx-caret::after {
+    background: CanvasText;
+  }
+}

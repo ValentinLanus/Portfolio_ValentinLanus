@@ -4,7 +4,8 @@
    global [data-palette] de palettes.css, --bg, --accent, --surface... valen los de la paleta a la
    que se va, no los de la que se deja. Por eso acá no hay ni un color suelto.
 
-   Capas: nav 50, menú mobile 60, barra de progreso 70, cortina y confeti 90, skip-link 100.
+   Capas: nav 50, menú mobile 60, barra de progreso 70, scanlines de Arcade 80, cortina y confeti 90,
+   skip-link 100.
    Estado inicial de cada pieza = primer fotograma de su animación, así no hay un destello antes
    de que arranque. El script anima con `motion` (nunca animateView: inyecta un <style> y la CSP
    lo bloquea) y pone las medidas que dependen de la pantalla con element.style. */
