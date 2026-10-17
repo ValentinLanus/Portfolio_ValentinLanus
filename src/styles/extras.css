@@ -103,10 +103,17 @@ html[data-palette='caramelo'] .hero,
 html[data-palette='lava'] .hero {
   position: relative;
   isolation: isolate;
+  /* Contenedor de ancho: la variante de la zona se elige con @container y unidades em, que son las
+     del texto del hero. Con letra más grande (zoom de texto, tamaño de fuente del navegador) el
+     mismo ancho vale menos em y la zona pasa sola a la franja de arriba, sin pisar el párrafo. Con
+     media queries en px no pasaría: el texto crece y la columna de la derecha no. */
+  container: fx-hero / inline-size;
 }
 /* Las formas se asoman por el borde de la zona (y al rotar o crecer, un poco más): que no ganen
-   scroll horizontal. `clip` (no `hidden`) no crea un contenedor de scroll, y solo corta en x. */
-.hero:has(> .fx-blobs, > .fx-lava) {
+   scroll horizontal. Se recorta en <main>, que ocupa todo el ancho de la ventana: en el hero
+   (máx. ~1328 px, centrado) el corte caería en medio de la pantalla. `clip` (no `hidden`) no crea
+   un contenedor de scroll, así que no afecta a los elementos sticky ni a los pines de GSAP. */
+main:has(.fx-blobs, .fx-lava) {
   overflow-x: clip;
 }
 .fx-blobs,
@@ -120,14 +127,16 @@ html[data-palette='lava'] .hero {
 }
 /* Pantalla ancha: el texto ocupa la parte izquierda (el párrafo corta a 52ch) y la derecha está
    libre, de la barra hacia abajo. 64 % deja unos 45 px de aire con el párrafo en 1200 px. */
-@media (min-width: 1200px) and (min-height: 560px) {
-  .fx-blobs,
-  .fx-lava {
-    position: absolute;
-    top: calc(var(--nav-h) + 2rem);
-    bottom: 3rem;
-    left: 64%;
-    right: 0;
+@media (min-height: 560px) {
+  @container fx-hero (min-width: 59em) {
+    .fx-blobs,
+    .fx-lava {
+      position: absolute;
+      top: calc(var(--nav-h) + 2rem);
+      bottom: 3rem;
+      left: 64%;
+      right: 0;
+    }
   }
 }
 
@@ -190,23 +199,25 @@ html[data-palette='caramelo'] .hero__title.fx-wave .line {
 }
 /* Pantalla ancha: la zona es una columna alta y angosta a la derecha del texto, y las formas se
    apilan en vertical. */
-@media (min-width: 1200px) and (min-height: 560px) {
-  .fx-blob:nth-child(1) {
-    width: 78cqmin;
-    top: 4cqh;
-    right: -6cqw;
-  }
-  .fx-blob:nth-child(2) {
-    width: 50cqmin;
-    top: 46cqh;
-    left: -4cqw;
-  }
-  .fx-blob:nth-child(3) {
-    width: 32cqmin;
-    top: auto;
-    bottom: 6cqh;
-    left: auto;
-    right: 14cqw;
+@media (min-height: 560px) {
+  @container fx-hero (min-width: 59em) {
+    .fx-blob:nth-child(1) {
+      width: 78cqmin;
+      top: 4cqh;
+      right: -6cqw;
+    }
+    .fx-blob:nth-child(2) {
+      width: 50cqmin;
+      top: 46cqh;
+      left: -4cqw;
+    }
+    .fx-blob:nth-child(3) {
+      width: 32cqmin;
+      top: auto;
+      bottom: 6cqh;
+      left: auto;
+      right: 14cqw;
+    }
   }
 }
 /* Una franja de menos de ~70 px no deja lugar para formas con sentido. */
@@ -314,30 +325,32 @@ html[data-palette='caramelo'] .hero__title.fx-wave .line {
 }
 /* Pantalla ancha: la zona es una columna libre a la derecha del texto. Las burbujas son más grandes
    y suben y bajan por toda la columna. */
-@media (min-width: 1200px) and (min-height: 560px) {
-  .fx-bubble:nth-child(1) {
-    width: 58cqmin;
-    left: 4cqw;
-    top: 4cqh;
-    animation-name: fx-rise-a;
-  }
-  .fx-bubble:nth-child(2) {
-    width: 42cqmin;
-    left: 46cqw;
-    top: 38cqh;
-    animation-name: fx-rise-b;
-  }
-  .fx-bubble:nth-child(3) {
-    width: 30cqmin;
-    left: 14cqw;
-    top: 64cqh;
-    animation-name: fx-rise-c;
-  }
-  .fx-bubble:nth-child(4) {
-    width: 26cqmin;
-    left: 60cqw;
-    top: 8cqh;
-    animation-name: fx-rise-d;
+@media (min-height: 560px) {
+  @container fx-hero (min-width: 59em) {
+    .fx-bubble:nth-child(1) {
+      width: 58cqmin;
+      left: 4cqw;
+      top: 4cqh;
+      animation-name: fx-rise-a;
+    }
+    .fx-bubble:nth-child(2) {
+      width: 42cqmin;
+      left: 46cqw;
+      top: 38cqh;
+      animation-name: fx-rise-b;
+    }
+    .fx-bubble:nth-child(3) {
+      width: 30cqmin;
+      left: 14cqw;
+      top: 64cqh;
+      animation-name: fx-rise-c;
+    }
+    .fx-bubble:nth-child(4) {
+      width: 26cqmin;
+      left: 60cqw;
+      top: 8cqh;
+      animation-name: fx-rise-d;
+    }
   }
 }
 @container (max-height: 70px) {

@@ -153,11 +153,29 @@ function nameWave({ reason, finePointer }: ExtraCtx): () => void {
     }
   };
 
-  const onEnter = () => {
-    if (running || performance.now() - lastEnd < COOLDOWN_MS) return;
-    void wave().catch((err) => console.error('[extras]', err));
+  /** Se resuelve cuando termina la entrada CSS del nombre (enseguida, si ya terminó). */
+  const entranceDone = () =>
+    Promise.all(
+      words.flatMap((word) => word.getAnimations().map((a) => a.finished.catch(() => null))),
+    );
+
+  // El mouse puede entrar mientras el nombre todavía sube (la entrada dura ~1.2 s): la ola espera a
+  // que termine, igual que la del arranque. Si empezara antes, se levantaría el recorte de `.line`
+  // (que esconde la palabra mientras sube) y se la vería asomar sin recortar.
+  let pending = false;
+  const onEnter = async () => {
+    if (running || pending || performance.now() - lastEnd < COOLDOWN_MS) return;
+    pending = true;
+    try {
+      await entranceDone();
+      // El puntero pudo irse mientras tanto: sin nadie encima no hay a quién responderle.
+      if (alive && title.matches(':hover')) await wave();
+    } finally {
+      pending = false;
+    }
   };
-  if (finePointer) title.addEventListener('pointerenter', onEnter);
+  const onPointerEnter = () => void onEnter().catch((err) => console.error('[extras]', err));
+  if (finePointer) title.addEventListener('pointerenter', onPointerEnter);
 
   // Se espera a que termine la entrada CSS del nombre (si la carga fue lenta, todavía está subiendo)
   // y, al cambiar de paleta, a que la cortina se abra. Si el nombre quedó fuera de la vista (recarga
@@ -168,9 +186,7 @@ function nameWave({ reason, finePointer }: ExtraCtx): () => void {
     const { top, bottom } = title.getBoundingClientRect();
     const visible = bottom > 0 && top < innerHeight;
     if (!visible || (reason === 'load' && waved)) return;
-    await Promise.all(
-      words.flatMap((word) => word.getAnimations().map((a) => a.finished.catch(() => null))),
-    );
+    await entranceDone();
     if (reason === 'switch')
       await new Promise((resolve) => {
         lead = window.setTimeout(resolve, SWITCH_LEAD_MS);
@@ -184,7 +200,7 @@ function nameWave({ reason, finePointer }: ExtraCtx): () => void {
   return () => {
     alive = false;
     clearTimeout(lead);
-    title.removeEventListener('pointerenter', onEnter);
+    title.removeEventListener('pointerenter', onPointerEnter);
     finish();
   };
 }

@@ -96,8 +96,9 @@ function bubbles(): () => void {
   }
   hero.prepend(layer);
 
-  const watcher = new IntersectionObserver(([entry]) => {
-    layer.toggleAttribute('data-paused', !entry.isIntersecting);
+  // Si el navegador junta varios avisos de una vez, vale el último: es el estado actual del hero.
+  const watcher = new IntersectionObserver((entries) => {
+    layer.toggleAttribute('data-paused', !entries[entries.length - 1].isIntersecting);
   });
   watcher.observe(hero);
   return () => {
