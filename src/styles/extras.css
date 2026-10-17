@@ -2,8 +2,9 @@
    no hay <style> inline (la CSP los bloquea) y todo lo decorativo lleva clase fx-*, aria-hidden y
    se quita en el cleanup. Con prefers-reduced-motion los extras ni arrancan: no existe ningún fx-*.
 
-   Capas: nav 50, menú mobile 60, barra de progreso 70, scanlines 80, cortina y confeti 90,
-   skip-link 100 (ver también curtains.css). */
+   Capas: nav 50, menú mobile 60, barra de progreso 70, scanlines 80, estela de Caramelo 85,
+   cortina y confeti 90, skip-link 100 (ver también curtains.css). Las capas de Caramelo y Lava
+   detrás del hero van en z-index -1 dentro del hero, que aísla su contexto de apilamiento. */
 
 /* ---- Terminal: el rol se escribe con un cursor de bloque ---------------------------------- */
 
@@ -86,4 +87,306 @@
   .fx-caret::after {
     background: CanvasText;
   }
+}
+
+/* ---- Caramelo y Lava: decoración detrás del hero ------------------------------------------- */
+
+/* La capa (.fx-blobs / .fx-lava) es el primer hijo del hero y va por debajo de su texto. El hero
+   es una columna flex con el contenido pegado abajo: la capa ocupa solo el espacio libre de arriba
+   (flex: 1 1 0, sin tamaño propio), así que ni empuja ni mueve nada del contenido. En pantallas
+   anchas pasa a ser una zona fija a la derecha del texto (más abajo).
+   Contraste: axe no mide estas capas (no capturan el puntero). Por eso viven en zonas sin texto, y
+   los tests de extras.spec.ts calculan el contraste real del texto contra el color compuesto en
+   cualquier punto donde se solapen. Las medidas internas usan unidades de contenedor (cqmin, cqh,
+   cqw): las formas se escalan con la zona libre y, si no hay lugar, desaparecen solas. */
+html[data-palette='caramelo'] .hero,
+html[data-palette='lava'] .hero {
+  position: relative;
+  isolation: isolate;
+}
+/* Las formas se asoman por el borde de la zona (y al rotar o crecer, un poco más): que no ganen
+   scroll horizontal. `clip` (no `hidden`) no crea un contenedor de scroll, y solo corta en x. */
+.hero:has(> .fx-blobs, > .fx-lava) {
+  overflow-x: clip;
+}
+.fx-blobs,
+.fx-lava {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  container-type: size;
+  z-index: -1;
+  pointer-events: none;
+}
+/* Pantalla ancha: el texto ocupa la parte izquierda (el párrafo corta a 52ch) y la derecha está
+   libre, de la barra hacia abajo. 64 % deja unos 45 px de aire con el párrafo en 1200 px. */
+@media (min-width: 1200px) and (min-height: 560px) {
+  .fx-blobs,
+  .fx-lava {
+    position: absolute;
+    top: calc(var(--nav-h) + 2rem);
+    bottom: 3rem;
+    left: 64%;
+    right: 0;
+  }
+}
+
+/* Modos que piden menos efectos o colores propios: ni formas ni estela. */
+@media (forced-colors: active), (prefers-contrast: more), print {
+  .fx-blobs,
+  .fx-lava,
+  .fx-trail {
+    display: none;
+  }
+}
+
+/* ---- Caramelo: ola del nombre, blobs y estela --------------------------------------------- */
+
+.fx-char {
+  display: inline-block;
+  white-space: pre;
+  will-change: transform;
+}
+/* Las letras suben por encima de la línea: mientras dura la ola se levanta el recorte de .line
+   (que existe para la entrada del nombre). */
+html[data-palette='caramelo'] .hero__title.fx-wave .line {
+  overflow: visible;
+}
+
+/* Tres formas orgánicas con colores de la paleta. Cada una flota con su propio compás (solo
+   transform) y rota apenas. Por defecto la zona es una franja sobre el texto (pantallas chicas y
+   medianas): las formas se reparten a lo largo y ninguna baja de ~84 % de la franja, así que
+   siempre queda aire sobre el texto. La variante depende de dónde está la zona (la misma consulta
+   que la acomoda a la derecha del texto) y no de su proporción: una franja casi cuadrada, como la
+   de un celular alto, también tiene texto abajo. */
+.fx-blob {
+  position: absolute;
+  aspect-ratio: 1;
+  border-radius: 62% 38% 54% 46% / 48% 58% 42% 52%;
+  will-change: transform;
+}
+.fx-blob:nth-child(1) {
+  width: 72cqmin;
+  top: 0;
+  right: -8cqmin;
+  background: var(--accent-2);
+  opacity: 0.85;
+  animation: fx-float-a 13s ease-in-out infinite alternate;
+}
+.fx-blob:nth-child(2) {
+  width: 48cqmin;
+  top: 36cqh;
+  left: 38cqw;
+  background: var(--accent);
+  opacity: 0.5;
+  animation: fx-float-b 17s ease-in-out infinite alternate;
+}
+.fx-blob:nth-child(3) {
+  width: 30cqmin;
+  top: 8cqh;
+  left: 6cqw;
+  background: var(--border);
+  animation: fx-float-c 11s ease-in-out infinite alternate;
+}
+/* Pantalla ancha: la zona es una columna alta y angosta a la derecha del texto, y las formas se
+   apilan en vertical. */
+@media (min-width: 1200px) and (min-height: 560px) {
+  .fx-blob:nth-child(1) {
+    width: 78cqmin;
+    top: 4cqh;
+    right: -6cqw;
+  }
+  .fx-blob:nth-child(2) {
+    width: 50cqmin;
+    top: 46cqh;
+    left: -4cqw;
+  }
+  .fx-blob:nth-child(3) {
+    width: 32cqmin;
+    top: auto;
+    bottom: 6cqh;
+    left: auto;
+    right: 14cqw;
+  }
+}
+/* Una franja de menos de ~70 px no deja lugar para formas con sentido. */
+@container (max-height: 70px) {
+  .fx-blob {
+    display: none;
+  }
+}
+@keyframes fx-float-a {
+  to {
+    transform: translate3d(-3cqmin, 4cqmin, 0) rotate(9deg) scale(1.04);
+  }
+}
+@keyframes fx-float-b {
+  to {
+    transform: translate3d(4cqmin, -3cqmin, 0) rotate(-12deg) scale(0.96);
+  }
+}
+@keyframes fx-float-c {
+  to {
+    transform: translate3d(-3cqmin, -3cqmin, 0) rotate(14deg);
+  }
+}
+
+/* La estela: diez puntos, del más grande y opaco (el que va pegado al puntero) al más chico. Se
+   muestran con data-on (el script lo pone al mover el mouse) y se apagan al salir de la ventana.
+   x e y son de GSAP; acá solo la apariencia. */
+.fx-trail {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 85;
+  width: calc(14px - var(--i) * 0.8px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--accent-2);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.fx-trail[data-tone='b'] {
+  background: var(--accent);
+}
+.fx-trail[data-on] {
+  opacity: calc(0.9 - var(--i) * 0.07);
+}
+
+/* ---- Lava: lámpara de burbujas que se funden ------------------------------------------------ */
+
+/* El svg que guarda el filtro: sin tamaño, fuera del flujo, sin puntero. No es display: none (los
+   navegadores ignoran un filtro que vive en un svg oculto de esa forma). */
+.fx-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* El filtro va en la capa, una sola vez. La opacidad se aplica después del filtro, sobre la forma
+   ya fundida: dos burbujas que se solapan no se oscurecen entre sí, y el color compuesto que vería
+   un texto (si alguna vez se cruzaran) es siempre ese mismo, el que miden los tests. */
+.fx-lava {
+  filter: url('#fx-goo');
+  opacity: 0.62;
+}
+.fx-bubble {
+  position: absolute;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  will-change: transform;
+}
+/* Por defecto la zona es una franja sobre el texto (pantallas chicas y medianas): las burbujas son
+   más chicas, se quedan en la parte de arriba (su borde de abajo, con el filtro y el movimiento, no
+   llega a menos de ~18 % del texto) y se mueven a lo largo en vez de subir y bajar. La variante
+   depende de dónde está la zona (la misma consulta que la acomoda a la derecha del texto) y no de
+   su proporción: una franja casi cuadrada, como la de un celular alto, también tiene texto abajo. */
+.fx-bubble:nth-child(1) {
+  width: 52cqh;
+  left: 4cqw;
+  top: 10cqh;
+  background: var(--accent);
+  animation: fx-drift-a 19s ease-in-out infinite alternate;
+}
+.fx-bubble:nth-child(2) {
+  width: 38cqh;
+  left: 44cqw;
+  top: 40cqh;
+  background: var(--accent-2);
+  animation: fx-drift-b 23s ease-in-out infinite alternate;
+}
+.fx-bubble:nth-child(3) {
+  width: 30cqh;
+  left: 20cqw;
+  top: 52cqh;
+  background: var(--accent);
+  animation: fx-drift-c 17s ease-in-out infinite alternate;
+}
+.fx-bubble:nth-child(4) {
+  width: 26cqh;
+  left: 72cqw;
+  top: 6cqh;
+  background: var(--accent-2);
+  animation: fx-drift-d 21s ease-in-out infinite alternate;
+}
+/* Pantalla ancha: la zona es una columna libre a la derecha del texto. Las burbujas son más grandes
+   y suben y bajan por toda la columna. */
+@media (min-width: 1200px) and (min-height: 560px) {
+  .fx-bubble:nth-child(1) {
+    width: 58cqmin;
+    left: 4cqw;
+    top: 4cqh;
+    animation-name: fx-rise-a;
+  }
+  .fx-bubble:nth-child(2) {
+    width: 42cqmin;
+    left: 46cqw;
+    top: 38cqh;
+    animation-name: fx-rise-b;
+  }
+  .fx-bubble:nth-child(3) {
+    width: 30cqmin;
+    left: 14cqw;
+    top: 64cqh;
+    animation-name: fx-rise-c;
+  }
+  .fx-bubble:nth-child(4) {
+    width: 26cqmin;
+    left: 60cqw;
+    top: 8cqh;
+    animation-name: fx-rise-d;
+  }
+}
+@container (max-height: 70px) {
+  .fx-bubble {
+    display: none;
+  }
+}
+/* Suben y bajan despacio y se cruzan: ahí es donde se funden. Las distancias están en cqmin, así
+   que escalan con la zona. */
+@keyframes fx-rise-a {
+  to {
+    transform: translate3d(8cqmin, 34cqmin, 0) scale(1.08);
+  }
+}
+@keyframes fx-rise-b {
+  to {
+    transform: translate3d(-10cqmin, -30cqmin, 0) scale(0.92);
+  }
+}
+@keyframes fx-rise-c {
+  to {
+    transform: translate3d(14cqmin, -26cqmin, 0) scale(1.12);
+  }
+}
+@keyframes fx-rise-d {
+  to {
+    transform: translate3d(-8cqmin, 36cqmin, 0) scale(0.9);
+  }
+}
+@keyframes fx-drift-a {
+  to {
+    transform: translate3d(34cqw, 8cqh, 0) scale(1.08);
+  }
+}
+@keyframes fx-drift-b {
+  to {
+    transform: translate3d(-30cqw, -10cqh, 0) scale(0.92);
+  }
+}
+@keyframes fx-drift-c {
+  to {
+    transform: translate3d(38cqw, -10cqh, 0) scale(1.12);
+  }
+}
+@keyframes fx-drift-d {
+  to {
+    transform: translate3d(-36cqw, 20cqh, 0) scale(0.9);
+  }
+}
+.fx-lava[data-paused] .fx-bubble {
+  animation-play-state: paused;
 }
