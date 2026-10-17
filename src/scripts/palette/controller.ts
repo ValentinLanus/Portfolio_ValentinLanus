@@ -1,4 +1,3 @@
-import { playCurtain } from './curtains';
 import {
   PALETTE_EVENT,
   STORAGE_KEY,
@@ -9,6 +8,9 @@ import {
 
 type Origin = { x: number; y: number };
 type Request = { id: PaletteId; origin: Origin };
+
+/** Si las cortinas (su descarga o su animación) tardan más que esto, el cambio sigue sin ellas. */
+const CURTAIN_LIMIT_MS = 2000;
 
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const screenCentre = (): Origin => ({ x: innerWidth / 2, y: innerHeight / 2 });
@@ -37,6 +39,19 @@ function applyPalette(id: PaletteId) {
   );
 }
 
+/** El resultado de `work`, o `undefined` si no llegó a tiempo. Un rechazo se propaga. */
+async function within<T>(work: Promise<T>, ms: number): Promise<T | undefined> {
+  let timer: number | undefined;
+  const late = new Promise<undefined>((resolve) => {
+    timer = window.setTimeout(resolve, ms);
+  });
+  try {
+    return await Promise.race([work, late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function transition({ id, origin }: Request) {
   let swapped = false;
   const swap = () => {
@@ -45,12 +60,22 @@ async function transition({ id, origin }: Request) {
     applyPalette(id);
   };
   if (reducedMotion()) return swap();
+  // Pasa a las cortinas para que cancelen su animación y se saquen del DOM si el controlador se
+  // cansa de esperarlas.
+  const abort = new AbortController();
   try {
-    await playCurtain(id, origin, swap);
+    // Las cortinas, y motion con ellas, se bajan recién acá: quien no cambia de paleta, o la cambia
+    // con reduced motion, no las descarga. Si el chunk no llega o no carga, el cambio es
+    // instantáneo.
+    const curtains = await within(import('./curtains'), CURTAIN_LIMIT_MS);
+    if (curtains)
+      await within(curtains.playCurtain(id, origin, swap, abort.signal), CURTAIN_LIMIT_MS);
   } catch (err) {
     console.error('[palette]', err);
   } finally {
-    // Una cortina rota no puede dejar el sitio en la paleta vieja.
+    // Una cortina rota o colgada no puede dejar el sitio en la paleta vieja, ni su velo tapando
+    // la página, ni el selector sin responder: la cola sigue con el pedido que viene.
+    abort.abort();
     swap();
   }
 }

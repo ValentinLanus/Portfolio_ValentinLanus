@@ -1,0 +1,145 @@
+/* Cortinas del cambio de paleta y confeti de Caramelo (scripts/palette/curtains.ts).
+
+   Los colores salen siempre de los tokens. La cortina lleva data-palette="{destino}": por la regla
+   global [data-palette] de palettes.css, --bg, --accent, --surface... valen los de la paleta a la
+   que se va, no los de la que se deja. Por eso acá no hay ni un color suelto.
+
+   Capas: nav 50, menú mobile 60, barra de progreso 70, cortina y confeti 90, skip-link 100.
+   Estado inicial de cada pieza = primer fotograma de su animación, así no hay un destello antes
+   de que arranque. El script anima con `motion` (nunca animateView: inyecta un <style> y la CSP
+   lo bloquea) y pone las medidas que dependen de la pantalla con element.style. */
+
+.curtain,
+.confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  overflow: hidden;
+}
+
+/* Mientras dura, frena clics, toques y el scroll por gesto: la página de abajo ya está cambiando. */
+.curtain {
+  touch-action: none;
+}
+.confetti {
+  pointer-events: none;
+}
+
+/* Reduced motion: el controlador ni la crea. Es la segunda defensa, por si algo la llamara igual. */
+@media (prefers-reduced-motion: reduce) {
+  .curtain,
+  .confetti {
+    display: none;
+  }
+}
+
+/* Terminal: ocho barras como líneas de una terminal. Entran por la izquierda y salen por la
+   derecha; el borde de --accent va al frente al entrar (derecha) y al salir (izquierda). */
+.curtain--terminal {
+  display: grid;
+  grid-template-rows: repeat(8, 1fr);
+}
+.curtain__bar {
+  box-sizing: border-box;
+  /* 1 px de más: se solapa con la barra de abajo y no queda rendija con alturas fraccionarias. */
+  height: calc(100% + 1px);
+  background: var(--surface);
+  border-inline: 3px solid var(--accent);
+  transform: translateX(-101%);
+}
+.curtain__bar:nth-child(even) {
+  background: var(--surface-2);
+}
+
+/* Arcade: grilla de bloques cuadrados. El script fija las columnas y filas en px enteros. Cada
+   bloque pisa 1 px al vecino para que no se cuele la página por el borde de un píxel. */
+.curtain--arcade {
+  display: grid;
+}
+.curtain__block {
+  margin: 0 -1px -1px 0;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--bg) 45%, transparent);
+  opacity: 0;
+}
+.curtain__block[data-tone='1'] {
+  background: var(--surface-2);
+}
+.curtain__block[data-tone='2'] {
+  background: var(--accent-2);
+}
+.curtain__block[data-tone='3'] {
+  background: var(--accent);
+}
+
+/* Caramelo: dos discos que se abren desde el botón (el borde de --accent-2 va adelante del
+   disco de --accent). --x e --y son el origen; el script anima el radio con clip-path. */
+.curtain__disc {
+  position: absolute;
+  inset: 0;
+  background: var(--accent-2);
+  clip-path: circle(0px at var(--x, 50%) var(--y, 50%));
+}
+.curtain__disc--core {
+  background: var(--accent);
+}
+
+/* Lava: tres gotas superpuestas con el borde ondulante. El script anima el polígono que las
+   recorta (clip-path), de modo que el borde ondula mientras crece y cuando se escurre. */
+.curtain__blob {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  clip-path: circle(0px at var(--x, 50%) var(--y, 50%));
+}
+.curtain__blob[data-tone='1'] {
+  background: var(--accent-2);
+}
+.curtain__blob[data-tone='2'] {
+  background: var(--surface-2);
+}
+
+/* Atardecer: surcos diagonales. Un rectángulo girado (--tilt) cuyas medidas fija el script para
+   que justo cubra la pantalla; adentro, franjas que suben por la diagonal una tras otra. Se
+   solapan 2 px: el borde girado queda suavizado y sin ellas dejaría una línea de la página. */
+.curtain__furrows {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--across);
+  height: var(--along);
+  display: flex;
+  transform: translate(-50%, -50%) rotate(var(--tilt));
+}
+.curtain__strip {
+  flex: 0 0 calc(100% / var(--strips) + 2px);
+  margin-right: -2px;
+  background: var(--surface-2);
+  transform: translateY(101%);
+}
+.curtain__strip[data-tone='1'] {
+  background: var(--accent-2);
+}
+.curtain__strip[data-tone='2'] {
+  background: var(--accent);
+}
+
+/* Confeti de Caramelo: papelitos con los colores de la paleta. Suben y caen; nada de esto recibe
+   clics y el script lo quita cuando terminan de caer. */
+.confetti__piece {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  background: var(--accent);
+  border-radius: 2px;
+}
+.confetti__piece[data-tone='1'] {
+  background: var(--accent-2);
+}
+.confetti__piece[data-tone='2'] {
+  background: var(--text);
+}
+.confetti__piece[data-round] {
+  border-radius: 50%;
+}

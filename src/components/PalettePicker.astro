@@ -34,11 +34,14 @@ const { variant, palette } = Astro.props;
         <circle class="palette__dot palette__dot--3" cx="15.75" cy="14" r="2" />
       </svg>
     </button>
+    {/* tabindex="-1": un clic en el relleno del menú lo enfoca a él en vez de dejar el foco en el
+        body, así Esc y las flechas siguen respondiendo. */}
     <div
       id="palette-menu"
       class="palette__menu"
       role="menu"
       aria-label={palette.title}
+      tabindex="-1"
       hidden
       data-palette-menu
     >
