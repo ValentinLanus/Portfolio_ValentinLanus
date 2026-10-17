@@ -1,9 +1,11 @@
+import { reveal } from './reveal';
 import type { MotionModule } from './types';
 
-export const projects: MotionModule = (gsap, _st, { desktop }) => {
+export const projects: MotionModule = (gsap, ScrollTrigger, { desktop }) => {
+  const offs: Array<() => void> = [];
   document.querySelectorAll<HTMLElement>('[data-project-row]').forEach((row) => {
     const media = row.querySelector('[data-parallax]');
-    const meta = row.querySelector('[data-meta]');
+    const meta = row.querySelector<HTMLElement>('[data-meta]');
     if (desktop && media) {
       gsap.fromTo(
         media,
@@ -16,14 +18,13 @@ export const projects: MotionModule = (gsap, _st, { desktop }) => {
       );
     }
     if (meta) {
-      gsap.from(meta.children, {
-        opacity: 0,
-        y: desktop ? 16 : 0,
-        duration: 0.6,
-        stagger: 0.06,
-        ease: 'power2.out',
-        scrollTrigger: { trigger: meta, start: 'top 80%', once: true },
-      });
+      offs.push(
+        reveal(gsap, ScrollTrigger, Array.from(meta.children) as HTMLElement[], {
+          trigger: meta,
+          desktop,
+        }),
+      );
     }
   });
+  return () => offs.forEach((off) => off());
 };

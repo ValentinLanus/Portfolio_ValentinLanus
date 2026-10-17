@@ -1,6 +1,6 @@
-import type { Gsap, MotionModule, ScrollTriggerT } from './types';
+import { reveal } from './reveal';
+import type { MotionModule, ScrollTriggerT } from './types';
 
-type Tween = ReturnType<Gsap['from']>;
 type Trigger = ReturnType<ScrollTriggerT['create']>;
 
 export const lotecito: MotionModule = (gsap, ScrollTrigger, { desktop }) => {
@@ -10,46 +10,39 @@ export const lotecito: MotionModule = (gsap, ScrollTrigger, { desktop }) => {
   const label = section?.querySelector<HTMLElement>('[data-signal-label]');
   if (!section || !pin || !signal || !label) return;
   const steps = Array.from(section.querySelectorAll<HTMLElement>('[data-step]'));
-  const decisions = section.querySelectorAll('[data-decisions] li');
+  const decisionList = section.querySelector<HTMLElement>('[data-decisions]');
   const lastStatus = steps[steps.length - 1].dataset.status ?? '';
 
-  const fadeSteps = (): Tween[] =>
+  const fadeSteps = () =>
     steps.map((step) =>
-      gsap.from(step, {
-        opacity: 0,
-        duration: 0.6,
-        ease: 'power2.out',
-        scrollTrigger: { trigger: step, start: 'top 85%', once: true },
+      reveal(gsap, ScrollTrigger, [step], {
+        trigger: step,
+        start: 'top 85%',
+        desktop,
+        move: false,
       }),
     );
 
   // refreshPriority -1: se calcula después del pin, que agrega 150vh por encima de la lista.
   const enterDecisions = () =>
-    gsap.from(decisions, {
-      opacity: 0,
-      y: desktop ? 16 : 0,
-      duration: 0.5,
-      stagger: 0.06,
-      ease: 'power2.out',
-      scrollTrigger: {
-        trigger: '[data-decisions]',
-        start: 'top 80%',
-        once: true,
-        refreshPriority: -1,
-      },
-    });
+    decisionList
+      ? reveal(gsap, ScrollTrigger, Array.from(decisionList.querySelectorAll<HTMLElement>('li')), {
+          trigger: decisionList,
+          desktop,
+          refreshPriority: -1,
+        })
+      : () => {};
 
   if (!desktop) {
-    fadeSteps();
-    enterDecisions();
-    return;
+    const offs = [...fadeSteps(), enterDecisions()];
+    return () => offs.forEach((off) => off());
   }
 
   // Desktop: se pinea solo si el bloque entra en la altura del viewport. Se vuelve a evaluar
   // en cada refresh de ScrollTrigger (resize, fuentes cargadas) y se alterna entre pin y fades.
   let mode: 'pinned' | 'fades' | null = null;
   let trigger: Trigger | null = null;
-  let fades: Tween[] = [];
+  let fades: Array<() => void> = [];
   let current = -1;
 
   const setActive = (i: number) => {
@@ -69,10 +62,7 @@ export const lotecito: MotionModule = (gsap, ScrollTrigger, { desktop }) => {
   };
 
   const stopFades = () => {
-    fades.forEach((t) => {
-      t.scrollTrigger?.kill();
-      t.revert();
-    });
+    fades.forEach((off) => off());
     fades = [];
   };
 
@@ -120,7 +110,7 @@ export const lotecito: MotionModule = (gsap, ScrollTrigger, { desktop }) => {
   };
 
   evaluate();
-  enterDecisions();
+  const offDecisions = enterDecisions();
 
   // El refresh que dispara este módulo tras cambiar de modo no se vuelve a evaluar.
   let selfRefresh = false;
@@ -139,6 +129,7 @@ export const lotecito: MotionModule = (gsap, ScrollTrigger, { desktop }) => {
     ScrollTrigger.removeEventListener('refresh', onRefresh);
     trigger?.kill(true);
     stopFades();
+    offDecisions();
     resetState();
   };
 };

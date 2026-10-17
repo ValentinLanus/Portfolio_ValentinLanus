@@ -1,18 +1,16 @@
+import { reveal } from './reveal';
 import type { MotionModule } from './types';
 
-export const contact: MotionModule = (gsap, _st, { desktop }) => {
+export const contact: MotionModule = (gsap, ScrollTrigger, { desktop }) => {
   const section = document.querySelector('[data-contact]');
   if (!section) return;
   const items = Array.from(section.querySelectorAll<HTMLElement>('[data-contact-link]'));
-  gsap.from(items, {
-    opacity: 0,
-    y: desktop ? 24 : 0,
-    duration: 0.6,
-    stagger: 0.08,
-    ease: 'power2.out',
-    scrollTrigger: { trigger: section, start: 'top 75%', once: true },
+  const offReveal = reveal(gsap, ScrollTrigger, items, {
+    trigger: section,
+    start: 'top 75%',
+    desktop,
   });
-  if (!desktop) return;
+  if (!desktop) return offReveal;
 
   // Hover magnético leve sobre el label (no sobre el li, que ya anima `y` al entrar).
   // Solo en links reales: en un canal pendiente sugeriría algo clickeable.
@@ -40,5 +38,8 @@ export const contact: MotionModule = (gsap, _st, { desktop }) => {
       item.removeEventListener('pointerleave', leave);
     };
   });
-  return () => offs.forEach((off) => off());
+  return () => {
+    offReveal();
+    offs.forEach((off) => off());
+  };
 };
