@@ -17,6 +17,7 @@ export default {
     contact: 'Contacto',
     menu: 'Menú',
     close: 'Cerrar',
+    toTop: 'Volver arriba',
     lang: { current: 'ES', other: 'EN', otherName: 'English' },
     palette: {
       button: 'Cambiar paleta',

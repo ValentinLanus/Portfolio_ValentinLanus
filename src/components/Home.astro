@@ -2,6 +2,7 @@
 import Base from '../layouts/Base.astro';
 import Nav from './Nav.astro';
 import ProgressBar from './ProgressBar.astro';
+import BackToTop from './BackToTop.astro';
 import Hero from './sections/Hero.astro';
 import About from './sections/About.astro';
 import Stack from './sections/Stack.astro';
@@ -31,6 +32,7 @@ const c = getContent(locale);
       <p class="mono footer__note">{c.footer.note}</p>
     </div>
   </footer>
+  <BackToTop label={c.nav.toTop} />
 </Base>
 
 <style>

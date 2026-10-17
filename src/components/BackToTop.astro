@@ -1,0 +1,296 @@
+---
+interface Props {
+  label: string;
+}
+const { label } = Astro.props;
+// Anillo de progreso de la página. El largo del trazo es la circunferencia (2πr): con el
+// desplazamiento igual al largo el anillo está vacío, con 0 está lleno (motion/totop.ts).
+const R = 22;
+const LENGTH = Number((2 * Math.PI * R).toFixed(2));
+---
+
+{/* Solo desktop (>= 900 px y puntero fino). Sin JS es un ancla común a #top. Con JS arranca
+    con data-hidden y motion/totop.ts lo muestra al pasar el hero; con reduced motion o si falla
+    la carga de GSAP se le quita y queda siempre a la vista. Va después del footer: es lo último
+    en el orden de tabulación. */}
+<a class="totop" href="#top" aria-label={label} data-totop data-hidden>
+  <svg class="totop__svg" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+    <circle class="totop__track" cx="24" cy="24" r={R}></circle>
+    <circle
+      class="totop__arc"
+      data-totop-arc
+      cx="24"
+      cy="24"
+      r={R}
+      transform="rotate(-90 24 24)"
+      stroke-dasharray={LENGTH}
+      stroke-dashoffset={LENGTH}
+    ></circle>
+    <path class="totop__arrow" d="M24 32V17M17.5 23.5 24 17l6.5 6.5"></path>
+  </svg>
+</a>
+
+<style>
+  /* Capas: nav 50, menú mobile 60, barra de progreso 70, cortina 90. El botón va a 45: sobre el
+     contenido y bajo el nav.
+
+     Colores. Cada pieza sale de una variable --totop-*, para que cada paleta redefina solo las
+     que cambian y para poder verificar el contraste (WCAG 1.4.11, componentes de UI >= 3:1):
+       edge   lo que delimita el botón. Contra el halo (--bg), que lo separa de lo que haya detrás.
+       fill   relleno. La flecha (arrow) tiene que dar 3:1 contra él.
+     El borde base es --text-3: llega a 4.4:1 o más sobre --bg, --surface y --surface-2 en las
+     cinco paletas. --border-ui de Arcade (#6b78a8) da 2.77:1 sobre --surface: no se usa de borde.
+     El anillo de progreso (track y arc) es redundante con la barra de arriba: no se mide. */
+  .totop {
+    --totop-edge: var(--text-3);
+    --totop-fill: var(--surface);
+    --totop-arrow: var(--text);
+    --totop-halo: var(--bg);
+    --totop-fill-hover: var(--surface-2);
+    --totop-arrow-hover: var(--accent);
+    --totop-track: var(--totop-edge);
+    --totop-arc: var(--accent);
+    --totop-shadow: color-mix(in srgb, color-mix(in srgb, var(--bg) 40%, #000) 60%, transparent);
+
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 45;
+    display: none;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--totop-fill);
+    color: var(--totop-arrow);
+    /* Halo del color de la página: separa el borde de cualquier cosa que pase por detrás
+       (imágenes, botones de acento) y garantiza el contraste del borde. */
+    box-shadow:
+      0 0 0 3px var(--totop-halo),
+      0 14px 24px -10px var(--totop-shadow);
+    transition:
+      opacity 0.25s,
+      transform 0.35s var(--ease-out),
+      background-color 0.2s,
+      color 0.2s,
+      visibility 0s;
+  }
+  @media (min-width: 900px) and (pointer: fine) {
+    .totop {
+      display: grid;
+    }
+  }
+
+  /* Oculto (solo con JS): visibility lo saca del orden de tabulación y del árbol de
+     accesibilidad; el retraso de visibility deja terminar el fundido. Sin JS no hay .js y el
+     botón se ve siempre. */
+  :global(html.js) .totop[data-hidden] {
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(16px);
+    pointer-events: none;
+    transition:
+      opacity 0.2s,
+      transform 0.3s var(--ease-out),
+      visibility 0s 0.3s;
+  }
+
+  .totop:is(:hover, :focus-visible) {
+    background: var(--totop-fill-hover);
+    color: var(--totop-arrow-hover);
+  }
+  .totop:active {
+    transform: scale(0.95);
+  }
+  /* Más lejos que el 3px del halo, para que el foco no se pegue al borde. */
+  .totop:focus-visible {
+    outline-offset: 6px;
+  }
+
+  .totop__svg {
+    width: 48px;
+    height: 48px;
+    overflow: visible;
+  }
+  .totop__track,
+  .totop__arc {
+    fill: none;
+  }
+  .totop__track {
+    stroke: var(--totop-track);
+    stroke-width: 2;
+  }
+  .totop__arc {
+    stroke: var(--totop-arc);
+    stroke-width: 3;
+    stroke-linecap: round;
+  }
+  .totop__arrow {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 0.25s var(--ease-out);
+  }
+  .totop:is(:hover, :focus-visible) .totop__arrow {
+    transform: translateY(-2px);
+  }
+
+  /* Arcade: cuadrado de píxeles, sin curvas. Borde de 3 px adentro, sombra dura abajo a la
+     derecha, anillo y flecha sin suavizado y todo a saltos (steps). Al pasar el mouse se invierte. */
+  :global(html[data-palette='arcade']) .totop {
+    --totop-edge: var(--text);
+    --totop-fill: var(--bg);
+    --totop-track: var(--border-ui);
+    --totop-fill-hover: var(--accent);
+    --totop-arrow-hover: var(--bg);
+    border-radius: 0;
+    box-shadow:
+      inset 0 0 0 3px var(--totop-edge),
+      0 0 0 3px var(--totop-halo),
+      6px 6px 0 3px var(--accent-2);
+    transition:
+      opacity 0.3s steps(3),
+      transform 0.3s steps(3),
+      visibility 0s;
+  }
+  :global(html.js[data-palette='arcade']) .totop[data-hidden] {
+    transform: translateY(24px);
+    transition:
+      opacity 0.3s steps(3),
+      transform 0.3s steps(3),
+      visibility 0s 0.3s;
+  }
+  :global(html[data-palette='arcade']) .totop:is(:hover, :focus-visible) {
+    --totop-track: var(--bg);
+    --totop-arc: var(--bg);
+  }
+  :global(html[data-palette='arcade']) .totop:active {
+    transform: translate(3px, 3px);
+    box-shadow:
+      inset 0 0 0 3px var(--totop-edge),
+      0 0 0 3px var(--totop-halo),
+      3px 3px 0 3px var(--accent-2);
+  }
+  :global(html[data-palette='arcade']) .totop__svg {
+    width: 36px;
+    height: 36px;
+  }
+  :global(html[data-palette='arcade']) :is(.totop__track, .totop__arc, .totop__arrow) {
+    shape-rendering: crispEdges;
+  }
+  :global(html[data-palette='arcade']) .totop__track {
+    stroke-width: 3;
+  }
+  :global(html[data-palette='arcade']) .totop__arc {
+    stroke-width: 5;
+    stroke-linecap: butt;
+  }
+  :global(html[data-palette='arcade']) .totop__arrow {
+    stroke-width: 5;
+    stroke-linecap: square;
+    stroke-linejoin: miter;
+    transition: transform 0.2s steps(2);
+  }
+  :global(html[data-palette='arcade']) .totop:is(:hover, :focus-visible) .totop__arrow {
+    transform: translateY(-4px);
+  }
+
+  /* Caramelo: píldora de color pleno, más ancha que alta, con una sombra de caramelo debajo.
+     Entra con un resorte que se pasa un poco y, con el mouse encima, rebota. */
+  :global(html[data-palette='caramelo']) .totop {
+    --totop-edge: var(--accent);
+    --totop-fill: var(--accent);
+    --totop-arrow: var(--bg);
+    --totop-track: var(--bg);
+    --totop-arc: var(--bg);
+    --totop-fill-hover: var(--accent);
+    --totop-arrow-hover: var(--bg);
+    width: 68px;
+    border-radius: 999px;
+    box-shadow:
+      0 0 0 3px var(--totop-halo),
+      0 6px 0 3px var(--accent-2);
+    transition:
+      opacity 0.2s,
+      transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
+      visibility 0s;
+  }
+  :global(html.js[data-palette='caramelo']) .totop[data-hidden] {
+    transform: translateY(24px) scale(0.8);
+    transition:
+      opacity 0.2s,
+      transform 0.3s var(--ease-out),
+      visibility 0s 0.3s;
+  }
+  :global(html[data-palette='caramelo']) .totop__track {
+    stroke-opacity: 0.4;
+  }
+  :global(html[data-palette='caramelo']) .totop__svg {
+    width: 42px;
+    height: 42px;
+  }
+  :global(html[data-palette='caramelo']) .totop__arrow {
+    stroke-width: 3;
+  }
+
+  @keyframes totop-bounce {
+    0% {
+      transform: translateY(0);
+    }
+    28% {
+      transform: translateY(-11px);
+    }
+    50% {
+      transform: translateY(0);
+    }
+    68% {
+      transform: translateY(-5px);
+    }
+    84% {
+      transform: translateY(0);
+    }
+    92% {
+      transform: translateY(-1px);
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    :global(html[data-palette='caramelo']) .totop:hover {
+      animation: totop-bounce 0.7s var(--ease-out);
+    }
+  }
+
+  /* Reduced motion: sin transiciones ni rebote. Con !important porque las reglas por paleta
+     pesan más que esta. (El rebote ya vive dentro de prefers-reduced-motion: no-preference.) */
+  @media (prefers-reduced-motion: reduce) {
+    .totop,
+    .totop__arrow {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+
+  @media print {
+    .totop {
+      display: none;
+    }
+  }
+
+  /* Alto contraste del sistema: sin sombras ni rellenos, el borde y el anillo usan los colores
+     del sistema. */
+  @media (forced-colors: active) {
+    .totop {
+      border: 2px solid ButtonText;
+    }
+    .totop__track {
+      stroke: ButtonText;
+    }
+    .totop__arc {
+      stroke: Highlight;
+    }
+  }
+</style>

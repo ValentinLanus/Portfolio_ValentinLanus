@@ -6,10 +6,11 @@ import { restoreReadingPosition, trackReadingPosition } from './position';
 import { progress } from './progress';
 import { projects } from './projects';
 import { stack } from './stack';
+import { bindToTopFocus, releaseToTop, toTop } from './totop';
 import type { MotionModule } from './types';
 
 // lotecito va antes de projects: el pin agrega altura y los triggers posteriores deben medirla.
-const modules: MotionModule[] = [progress, about, stack, lotecito, projects, contact];
+const modules: MotionModule[] = [progress, toTop, about, stack, lotecito, projects, contact];
 
 const root = document.documentElement;
 
@@ -38,6 +39,7 @@ async function start() {
       const { desktop, reduce } = context.conditions as Record<string, boolean>;
       if (reduce) {
         root.dataset.motion = 'off';
+        releaseToTop();
         return;
       }
       root.dataset.motion = desktop ? 'desktop' : 'mobile';
@@ -68,10 +70,19 @@ async function start() {
   window.addEventListener('load', () => ScrollTrigger.refresh(), { once: true });
 }
 
+bindToTopFocus();
+
 if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
   root.dataset.motion = 'off';
+  releaseToTop();
 } else {
   trackReadingPosition();
-  // Si falla la carga de GSAP (red), el sitio queda estático y legible.
-  whenIdle(() => start().catch((err) => console.error('[motion]', err)));
+  // Si falla la carga de GSAP (red), el sitio queda estático y legible, con el botón de volver
+  // arriba a la vista.
+  whenIdle(() =>
+    start().catch((err) => {
+      console.error('[motion]', err);
+      releaseToTop();
+    }),
+  );
 }

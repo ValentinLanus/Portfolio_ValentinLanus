@@ -52,6 +52,7 @@ export interface SiteContent {
     contact: string;
     menu: string;
     close: string;
+    toTop: string;
     lang: { current: string; other: string; otherName: string };
     palette: { button: string; title: string; names: Record<PaletteId, string> };
   };
