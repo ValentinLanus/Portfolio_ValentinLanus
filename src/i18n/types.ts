@@ -1,5 +1,6 @@
 import type { ImageMetadata } from 'astro';
 import type { Todo } from '../content/placeholders';
+import type { PaletteId } from '../scripts/palette/palettes';
 import type { Locale } from './locales';
 
 export type { Locale };
@@ -52,6 +53,7 @@ export interface SiteContent {
     menu: string;
     close: string;
     lang: { current: string; other: string; otherName: string };
+    palette: { button: string; title: string; names: Record<PaletteId, string> };
   };
   hero: {
     eyebrow: string;

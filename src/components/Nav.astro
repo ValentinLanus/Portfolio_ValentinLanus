@@ -1,5 +1,6 @@
 ---
 import LangSwitch from './LangSwitch.astro';
+import PalettePicker from './PalettePicker.astro';
 import type { Locale, SiteContent } from '../i18n/types';
 interface Props {
   locale: Locale;
@@ -38,6 +39,7 @@ const items = [
       </ol>
     </nav>
     <LangSwitch locale={locale} lang={nav.lang} />
+    <PalettePicker variant="popover" palette={nav.palette} />
     <button
       class="nav__toggle"
       type="button"
@@ -64,6 +66,7 @@ const items = [
       ))}
     </ol>
   </nav>
+  <PalettePicker variant="group" palette={nav.palette} />
   <button class="menu__close btn btn--ghost" type="button" data-menu-close>
     {nav.close}
   </button>
@@ -194,6 +197,9 @@ const items = [
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    gap: 24px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .menu[hidden] {
     display: none;
@@ -215,6 +221,22 @@ const items = [
     align-self: flex-start;
     background: none;
     cursor: pointer;
+  }
+
+  /* Con el selector de paleta, de 768 a 1023 px la barra no tiene lugar para los 28 px de siempre
+     entre links: se achican los espacios para que el nombre y los links no se partan. */
+  @media (min-width: 768px) {
+    .nav__name {
+      white-space: nowrap;
+    }
+  }
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .nav__inner {
+      gap: 16px;
+    }
+    .nav__links ol {
+      gap: 14px;
+    }
   }
 
   @media (max-width: 767px) {

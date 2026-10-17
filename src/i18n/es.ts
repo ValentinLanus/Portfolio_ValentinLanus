@@ -18,6 +18,17 @@ export default {
     menu: 'Menú',
     close: 'Cerrar',
     lang: { current: 'ES', other: 'EN', otherName: 'English' },
+    palette: {
+      button: 'Cambiar paleta',
+      title: 'Paleta',
+      names: {
+        terminal: 'Terminal',
+        arcade: 'Arcade',
+        caramelo: 'Caramelo',
+        lava: 'Lava',
+        atardecer: 'Atardecer',
+      },
+    },
   },
   hero: {
     eyebrow: '// portfolio',

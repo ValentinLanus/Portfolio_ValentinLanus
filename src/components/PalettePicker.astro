@@ -1,0 +1,288 @@
+---
+import { DEFAULT_PALETTE, PALETTES } from '../scripts/palette/palettes';
+import type { SiteContent } from '../i18n/types';
+interface Props {
+  /** popover: botón con menú en la barra (>= 768 px). group: botones en línea dentro del menú mobile. */
+  variant: 'popover' | 'group';
+  palette: SiteContent['nav']['palette'];
+}
+const { variant, palette } = Astro.props;
+---
+
+{variant === 'popover' ? (
+  <div class="palette" data-palette-picker>
+    <button
+      class="palette__button"
+      type="button"
+      aria-haspopup="menu"
+      aria-expanded="false"
+      aria-controls="palette-menu"
+      aria-label={palette.button}
+      data-palette-button
+    >
+      <svg
+        class="palette__icon"
+        viewBox="0 0 24 24"
+        width="20"
+        height="20"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <circle class="palette__ring" cx="12" cy="12" r="9.25" />
+        <circle class="palette__dot palette__dot--1" cx="12" cy="8" r="2" />
+        <circle class="palette__dot palette__dot--2" cx="8.25" cy="14" r="2" />
+        <circle class="palette__dot palette__dot--3" cx="15.75" cy="14" r="2" />
+      </svg>
+    </button>
+    <div
+      id="palette-menu"
+      class="palette__menu"
+      role="menu"
+      aria-label={palette.title}
+      hidden
+      data-palette-menu
+    >
+      {PALETTES.map((id) => (
+        <button
+          class="opt"
+          type="button"
+          role="menuitemradio"
+          aria-checked={id === DEFAULT_PALETTE ? 'true' : 'false'}
+          tabindex="-1"
+          data-palette-option={id}
+        >
+          <span class="swatch" data-palette={id} aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
+          <span class="opt__name">{palette.names[id]}</span>
+          <svg class="opt__check" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+            <polyline points="3 8.5 6.25 11.75 13 4.75" />
+          </svg>
+        </button>
+      ))}
+    </div>
+  </div>
+) : (
+  <div class="group" role="group" aria-labelledby="palette-group-title" data-palette-group>
+    <p id="palette-group-title" class="group__title mono label">
+      {palette.title}
+    </p>
+    <div class="group__list">
+      {PALETTES.map((id) => (
+        <button
+          class="opt"
+          type="button"
+          aria-pressed={id === DEFAULT_PALETTE ? 'true' : 'false'}
+          data-palette-option={id}
+        >
+          <span class="swatch" data-palette={id} aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
+          <span class="opt__name">{palette.names[id]}</span>
+          <svg class="opt__check" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+            <polyline points="3 8.5 6.25 11.75 13 4.75" />
+          </svg>
+        </button>
+      ))}
+    </div>
+  </div>
+)}
+
+<script>
+  import { initPicker } from '../scripts/palette/picker';
+  initPicker();
+</script>
+
+<style>
+  /* Contraste (WCAG 1.4.11): los bordes que delimitan o marcan usan --text-3 o --accent, que
+     llegan a 4.4:1 sobre --surface y --surface-2 en las cinco paletas. --border-ui de Arcade
+     (#6b78a8) da 2.77:1 sobre --surface y 2.43:1 sobre --surface-2: solo se usa sobre --bg. */
+
+  /* Botón de la barra. Mismo molde que el botón "Menú" del nav (44 px, --border-ui sobre --bg). */
+  .palette {
+    position: relative;
+    --ring: var(--text-3);
+    --pop-shadow: color-mix(in srgb, color-mix(in srgb, var(--bg) 40%, #000) 60%, transparent);
+  }
+  .palette__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    background: none;
+    border: 1px solid var(--border-ui);
+    border-radius: var(--radius);
+    color: var(--text);
+    cursor: pointer;
+    transition:
+      border-color 0.2s,
+      background-color 0.2s,
+      transform 0.15s var(--ease-out);
+  }
+  .palette__button:hover {
+    border-color: var(--text-2);
+  }
+  .palette__button[aria-expanded='true'] {
+    background: var(--surface);
+    border-color: var(--accent);
+  }
+  .palette__button:active {
+    transform: scale(0.96);
+  }
+  /* El ícono muestra la paleta activa: anillo del color del texto y tres puntos con sus colores. */
+  .palette__ring {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+  }
+  .palette__dot--1 {
+    fill: var(--accent);
+  }
+  .palette__dot--2 {
+    fill: var(--accent-2);
+  }
+  .palette__dot--3 {
+    fill: currentColor;
+  }
+
+  /* Popover. Alineado al borde derecho del botón, que ya está contra el borde de la barra. */
+  .palette__menu {
+    position: absolute;
+    z-index: 1;
+    top: calc(100% + 14px);
+    right: 0;
+    display: grid;
+    gap: 2px;
+    min-width: 220px;
+    padding: 6px;
+    background: var(--surface);
+    border: 1px solid var(--text-3);
+    border-radius: var(--radius);
+    box-shadow: 0 18px 36px -14px var(--pop-shadow);
+    transform-origin: top right;
+  }
+  .palette__menu[hidden] {
+    display: none;
+  }
+  .palette__menu:not([hidden]) {
+    animation: palette-pop 0.16s var(--ease-out);
+  }
+  @keyframes palette-pop {
+    from {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.98);
+    }
+  }
+
+  /* Opción: la misma pieza en el popover (menuitemradio) y en el menú mobile (aria-pressed). */
+  .opt {
+    display: grid;
+    grid-template-columns: auto 1fr 16px;
+    align-items: center;
+    column-gap: 12px;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+    background: none;
+    border: 0;
+    border-radius: calc(var(--radius) - 2px);
+    color: var(--text-2);
+    font-size: 0.9375rem;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      background-color 0.15s,
+      color 0.15s,
+      transform 0.15s var(--ease-out);
+  }
+  .opt:hover,
+  .opt:focus-visible {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+  .opt:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+  .opt:active {
+    transform: scale(0.98);
+  }
+  .opt[aria-checked='true'],
+  .opt[aria-pressed='true'] {
+    color: var(--text);
+  }
+  /* La opción elegida se marca con un tilde en --accent, no solo con color de fondo o de borde. */
+  .opt__check {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0;
+  }
+  .opt[aria-checked='true'] .opt__check,
+  .opt[aria-pressed='true'] .opt__check {
+    opacity: 1;
+  }
+
+  /* Muestra: tres puntos con --bg, --accent y --accent-2 de SU paleta (la regla global
+     [data-palette] les da los tokens). El anillo viene del contenedor, en --text-3 de la paleta
+     activa: sin él el punto de --bg desaparece sobre una superficie parecida. */
+  .swatch {
+    display: inline-flex;
+    gap: 5px;
+  }
+  .swatch span {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px var(--ring);
+  }
+  .swatch span:nth-child(1) {
+    background: var(--bg);
+  }
+  .swatch span:nth-child(2) {
+    background: var(--accent);
+  }
+  .swatch span:nth-child(3) {
+    background: var(--accent-2);
+  }
+
+  /* Grupo dentro del menú mobile: lista vertical, una opción por fila de 44 px. */
+  .group {
+    --ring: var(--text-3);
+    display: grid;
+    gap: 10px;
+  }
+  .group__list {
+    display: grid;
+    gap: 6px;
+  }
+  .group .opt {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .group .opt[aria-pressed='true'] {
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
+
+  /* Sin JS no hay nada que abrir; en mobile el grupo del menú reemplaza al popover. */
+  :global(html:not(.js)) .palette {
+    display: none;
+  }
+  @media (max-width: 767px) {
+    .palette {
+      display: none;
+    }
+  }
+</style>
