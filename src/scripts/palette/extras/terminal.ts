@@ -2,7 +2,7 @@ import { ScrambleTextPlugin } from 'gsap/ScrambleTextPlugin';
 import type { Gsap, ScrollTriggerT } from '../../motion/types';
 import { visualClone } from '../a11y';
 import { dispose } from '../dispose';
-import type { Extra } from '../extras';
+import type { Extra, ExtraCtx } from '../extras';
 
 // Terminal: el sitio se comporta como una consola.
 //   - El rol del hero se escribe a mano, con un cursor de bloque que se queda al terminar.
@@ -21,6 +21,8 @@ const SCRAMBLE_SECONDS = 0.8;
 const [LT, GT] = ['‹', '›'];
 const SCRAMBLE_CHARS = `01${LT}${GT}/_`;
 const unmask = (s: string) => s.replaceAll(LT, '<').replaceAll(GT, '>');
+
+type ExtraReason = ExtraCtx['reason'];
 
 const noop = () => {};
 const random = (min: number, max: number) => min + Math.random() * (max - min);
@@ -44,7 +46,7 @@ function entryDelay(el: HTMLElement) {
  * así que nada de lo que está debajo se mueve ni se reacomoda. Al terminar se devuelve el texto
  * original (los mismos nodos) y el cursor se queda al final.
  */
-function typeRole(): () => void {
+function typeRole(reason: ExtraReason): () => void {
   const role = document.querySelector<HTMLElement>('.hero__role');
   const text = role?.textContent ?? '';
   if (!role || !text) return noop;
@@ -69,9 +71,17 @@ function typeRole(): () => void {
     caret.remove();
   };
 
-  // Si el rol ya quedó fuera de la vista (se recargó a mitad de página), se muestra completo.
+  // Se muestra completo, sin tipear, si el rol ya quedó fuera de la vista (se recargó a mitad de
+  // página) o si, en el arranque inicial, ya se ve: en una carga lenta el extra llega después de
+  // la entrada CSS del rol, y vaciarlo para tipearlo sería deshacer a la vista lo que se está
+  // leyendo. "Ya se ve" = opacidad calculada de 0.5 o más: cubre tanto la entrada a medio camino
+  // como terminada (con `animation-fill-mode: both` queda en 1) y no depende de cuándo cargó cada
+  // cosa. Al cambiar a Terminal (`switch`) siempre se tipea: ahí el cambio de paleta es la entrada.
   const { top, bottom } = role.getBoundingClientRect();
-  if (bottom < 0 || top > innerHeight) {
+  const offscreen = bottom < 0 || top > innerHeight;
+  const alreadyShown =
+    reason === 'load' && Number.parseFloat(getComputedStyle(role).opacity) >= 0.5;
+  if (offscreen || alreadyShown) {
     finish();
     return off;
   }
@@ -158,11 +168,11 @@ function decipherTitles(gsap: Gsap, ScrollTrigger: ScrollTriggerT): () => void {
   return () => dispose(offs);
 }
 
-const terminal: Extra = ({ gsap, ScrollTrigger }) => {
+const terminal: Extra = ({ gsap, ScrollTrigger, reason }) => {
   gsap.registerPlugin(ScrambleTextPlugin);
   const offs: Array<() => void> = [];
   // Un efecto que falla no se lleva puesto al otro.
-  for (const start of [typeRole, () => decipherTitles(gsap, ScrollTrigger)]) {
+  for (const start of [() => typeRole(reason), () => decipherTitles(gsap, ScrollTrigger)]) {
     try {
       offs.push(start());
     } catch (err) {

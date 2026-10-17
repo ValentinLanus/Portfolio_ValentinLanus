@@ -28,6 +28,13 @@ export interface ExtraCtx {
   desktop: boolean;
   /** Hay un puntero preciso (mouse) disponible. */
   finePointer: boolean;
+  /**
+   * Por qué arranca el extra: `load` es el arranque inicial (la página cargó con esta paleta, o
+   * motion volvió a armar su contexto); `switch` es que el usuario acaba de cambiar a esta paleta.
+   * En `load` la página puede estar ya a medio mostrar: un extra no tiene que deshacer a la vista
+   * lo que el usuario ya está viendo.
+   */
+  reason: 'load' | 'switch';
 }
 
 export type Extra = (ctx: ExtraCtx) => () => void;
@@ -47,8 +54,8 @@ const noop = () => {};
  * contexto de matchMedia de motion/index.ts (no en la rama de reduced motion). Devuelve el
  * cleanup total: saca el listener y deshace el extra que esté corriendo.
  */
-export function startExtras(ctx: Omit<ExtraCtx, 'finePointer'>): () => void {
-  const full: ExtraCtx = { ...ctx, finePointer: matchMedia('(pointer: fine)').matches };
+export function startExtras(ctx: Omit<ExtraCtx, 'finePointer' | 'reason'>): () => void {
+  const base = { ...ctx, finePointer: matchMedia('(pointer: fine)').matches };
   let stop = noop;
   // Cada pedido de arranque tiene su número: si la paleta cambia mientras el chunk baja, el
   // pedido viejo se descarta al llegar en vez de pisar al nuevo.
@@ -61,7 +68,7 @@ export function startExtras(ctx: Omit<ExtraCtx, 'finePointer'>): () => void {
     dispose([off]);
   };
 
-  const run = async (id: PaletteId) => {
+  const run = async (id: PaletteId, reason: ExtraCtx['reason']) => {
     const mine = ++turn;
     // Primero se limpia el anterior, con el evento recién despachado (la pantalla sigue tapada
     // por la cortina); recién después se carga el nuevo. Un cleanup que tira no puede impedir
@@ -70,16 +77,17 @@ export function startExtras(ctx: Omit<ExtraCtx, 'finePointer'>): () => void {
     try {
       const { default: extra } = await EXTRAS[id]();
       if (!alive || mine !== turn) return;
-      stop = extra(full);
+      stop = extra({ ...base, reason });
     } catch (err) {
       // Un extra roto o un chunk que no llega no tumban el sitio: queda sin ese adorno.
       console.error('[extras]', err);
     }
   };
 
-  const onChange = (e: Event) => void run((e as CustomEvent<PaletteChangeDetail>).detail.id);
+  const onChange = (e: Event) =>
+    void run((e as CustomEvent<PaletteChangeDetail>).detail.id, 'switch');
   document.addEventListener(PALETTE_EVENT, onChange);
-  void run(currentPalette());
+  void run(currentPalette(), 'load');
 
   return () => {
     alive = false;
