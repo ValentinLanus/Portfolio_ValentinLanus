@@ -6,7 +6,7 @@ import { restoreReadingPosition, trackReadingPosition } from './position';
 import { progress } from './progress';
 import { projects } from './projects';
 import { stack } from './stack';
-import { bindToTopFocus, releaseToTop, toTop } from './totop';
+import { bindToTopFocus, toTop, watchToTop } from './totop';
 import type { MotionModule } from './types';
 
 // lotecito va antes de projects: el pin agrega altura y los triggers posteriores deben medirla.
@@ -39,7 +39,6 @@ async function start() {
       const { desktop, reduce } = context.conditions as Record<string, boolean>;
       if (reduce) {
         root.dataset.motion = 'off';
-        releaseToTop();
         return;
       }
       root.dataset.motion = desktop ? 'desktop' : 'mobile';
@@ -70,19 +69,14 @@ async function start() {
   window.addEventListener('load', () => ScrollTrigger.refresh(), { once: true });
 }
 
+// El botón de volver arriba no depende de GSAP: su visibilidad y su foco corren en las dos ramas.
 bindToTopFocus();
+watchToTop();
 
 if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
   root.dataset.motion = 'off';
-  releaseToTop();
 } else {
   trackReadingPosition();
-  // Si falla la carga de GSAP (red), el sitio queda estático y legible, con el botón de volver
-  // arriba a la vista.
-  whenIdle(() =>
-    start().catch((err) => {
-      console.error('[motion]', err);
-      releaseToTop();
-    }),
-  );
+  // Si falla la carga de GSAP (red), el sitio queda estático y legible.
+  whenIdle(() => start().catch((err) => console.error('[motion]', err)));
 }

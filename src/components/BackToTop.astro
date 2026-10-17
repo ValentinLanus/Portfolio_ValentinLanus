@@ -9,10 +9,11 @@ const R = 22;
 const LENGTH = Number((2 * Math.PI * R).toFixed(2));
 ---
 
-{/* Solo desktop (>= 900 px y puntero fino). Sin JS es un ancla común a #top. Con JS arranca
-    con data-hidden y motion/totop.ts lo muestra al pasar el hero; con reduced motion o si falla
-    la carga de GSAP se le quita y queda siempre a la vista. Va después del footer: es lo último
-    en el orden de tabulación. */}
+{/* Solo desktop (>= 900 px y puntero fino). Sin JS es un ancla común a #top, siempre visible.
+    Con JS arranca con data-hidden y motion/totop.ts (watchToTop, sin GSAP: también con reduced
+    motion o si GSAP no carga) lo muestra al pasar el hero y lo esconde arriba de todo. El anillo
+    es de GSAP: solo se ve con data-ring, que pone el módulo toTop. Va después del footer: es lo
+    último en el orden de tabulación. */}
 <a class="totop" href="#top" aria-label={label} data-totop data-hidden>
   <svg class="totop__svg" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
     <circle class="totop__track" cx="24" cy="24" r={R}></circle>
@@ -124,6 +125,12 @@ const LENGTH = Number((2 * Math.PI * R).toFixed(2));
     stroke: var(--totop-arc);
     stroke-width: 3;
     stroke-linecap: round;
+    /* Sin scrub (sin JS, reduced motion o GSAP caído) no hay anillo: ni el punto que dejaría la
+       punta redonda de un trazo vacío. */
+    visibility: hidden;
+  }
+  .totop[data-ring] .totop__arc {
+    visibility: visible;
   }
   .totop__arrow {
     fill: none;
@@ -183,6 +190,10 @@ const LENGTH = Number((2 * Math.PI * R).toFixed(2));
   :global(html[data-palette='arcade']) .totop__track {
     stroke-width: 3;
   }
+  /* Acá el borde es el marco, no el track: sin anillo en vivo no queda un círculo vacío. */
+  :global(html[data-palette='arcade']) .totop:not([data-ring]) .totop__track {
+    visibility: hidden;
+  }
   :global(html[data-palette='arcade']) .totop__arc {
     stroke-width: 5;
     stroke-linecap: butt;
@@ -226,6 +237,9 @@ const LENGTH = Number((2 * Math.PI * R).toFixed(2));
   }
   :global(html[data-palette='caramelo']) .totop__track {
     stroke-opacity: 0.4;
+  }
+  :global(html[data-palette='caramelo']) .totop:not([data-ring]) .totop__track {
+    visibility: hidden;
   }
   :global(html[data-palette='caramelo']) .totop__svg {
     width: 42px;
