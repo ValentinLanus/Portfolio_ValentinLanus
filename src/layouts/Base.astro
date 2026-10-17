@@ -15,13 +15,19 @@ const { locale, content } = Astro.props;
 ---
 
 <!doctype html>
-<html lang={locale}>
+<html lang={locale} data-palette="terminal">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="preload" href={geistLatin} as="font" type="font/woff2" crossorigin />
+    {/* Aplica la paleta guardada antes de pintar. Ids = PALETTES (scripts/palette/palettes.ts). */}
     <script is:inline>
       document.documentElement.classList.add('js');
+      try {
+        var p = localStorage.getItem('palette');
+        if (/^(arcade|caramelo|lava|atardecer)$/.test(p))
+          document.documentElement.dataset.palette = p;
+      } catch (e) {}
     </script>
     <Seo locale={locale} meta={content.meta} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
