@@ -1,5 +1,6 @@
 import type { Gsap, ScrollTriggerT } from '../../motion/types';
 import { visualClone } from '../a11y';
+import { dispose } from '../dispose';
 import type { Extra } from '../extras';
 
 // Arcade: la pantalla de una consola de 8 bits.
@@ -109,7 +110,7 @@ const arcade: Extra = ({ gsap, ScrollTrigger }) => {
       console.error('[extras]', err);
     }
   }
-  return () => offs.forEach((off) => off());
+  return () => dispose(offs);
 };
 
 export default arcade;

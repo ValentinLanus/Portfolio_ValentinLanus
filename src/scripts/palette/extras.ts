@@ -1,4 +1,5 @@
 import type { Gsap, ScrollTriggerT } from '../motion/types';
+import { dispose } from './dispose';
 import {
   PALETTE_EVENT,
   currentPalette,
@@ -54,12 +55,18 @@ export function startExtras(ctx: Omit<ExtraCtx, 'finePointer'>): () => void {
   let turn = 0;
   let alive = true;
 
+  const undo = () => {
+    const off = stop;
+    stop = noop;
+    dispose([off]);
+  };
+
   const run = async (id: PaletteId) => {
     const mine = ++turn;
     // Primero se limpia el anterior, con el evento recién despachado (la pantalla sigue tapada
-    // por la cortina); recién después se carga el nuevo.
-    stop();
-    stop = noop;
+    // por la cortina); recién después se carga el nuevo. Un cleanup que tira no puede impedir
+    // que arranque el siguiente ni dejarse como el que hay que volver a correr.
+    undo();
     try {
       const { default: extra } = await EXTRAS[id]();
       if (!alive || mine !== turn) return;
@@ -78,7 +85,6 @@ export function startExtras(ctx: Omit<ExtraCtx, 'finePointer'>): () => void {
     alive = false;
     turn++;
     document.removeEventListener(PALETTE_EVENT, onChange);
-    stop();
-    stop = noop;
+    undo();
   };
 }

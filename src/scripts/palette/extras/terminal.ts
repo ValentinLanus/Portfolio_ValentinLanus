@@ -1,6 +1,7 @@
 import { ScrambleTextPlugin } from 'gsap/ScrambleTextPlugin';
 import type { Gsap, ScrollTriggerT } from '../../motion/types';
 import { visualClone } from '../a11y';
+import { dispose } from '../dispose';
 import type { Extra } from '../extras';
 
 // Terminal: el sitio se comporta como una consola.
@@ -154,7 +155,7 @@ function decipherTitles(gsap: Gsap, ScrollTrigger: ScrollTriggerT): () => void {
       stop();
     });
   });
-  return () => offs.forEach((off) => off());
+  return () => dispose(offs);
 }
 
 const terminal: Extra = ({ gsap, ScrollTrigger }) => {
@@ -168,7 +169,7 @@ const terminal: Extra = ({ gsap, ScrollTrigger }) => {
       console.error('[extras]', err);
     }
   }
-  return () => offs.forEach((off) => off());
+  return () => dispose(offs);
 };
 
 export default terminal;
