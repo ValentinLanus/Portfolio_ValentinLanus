@@ -1,10 +1,13 @@
+import { animate, stagger } from 'motion';
 import type { PaletteId } from './palettes';
 
 // Las cortinas tapan el cambio de paleta: cubren la pantalla, `swap()` cambia la paleta por
 // debajo y se van. Cada paleta tiene la suya, con su personalidad (ver PERSONALITY en palettes.ts).
 //
-//   - Se anima con `animate` de motion (import dinámico: este módulo y motion solo se bajan al
-//     cambiar de paleta). Nunca `animateView`: inyecta un <style> y la CSP lo bloquea.
+//   - Se anima con `animate` y `stagger` de motion, importados por nombre: el bundler deja afuera
+//     el resto de la librería. Este módulo ya es un chunk aparte (el controlador lo importa con
+//     import() al abrir el selector o al cambiar de paleta), y motion viene con él. Nunca
+//     `animateView`: inyecta un <style> y la CSP lo bloquea.
 //   - Todo se puede cancelar con la señal que da el controlador: si una cortina se cuelga, él
 //     sigue sin ella y la señal le avisa que se saque del DOM (si no, el velo taparía la página).
 //   - Colores y medidas fijas viven en styles/curtains.css. Acá solo geometría que depende del
@@ -12,17 +15,16 @@ import type { PaletteId } from './palettes';
 //   - Cubrir + descubrir tarda entre 700 y 830 ms según la paleta (tope de 900).
 
 type Origin = { x: number; y: number };
-type Motion = typeof import('motion');
-type Keyframes = Parameters<Motion['animate']>[1];
-type Options = NonNullable<Parameters<Motion['animate']>[2]>;
+type Keyframes = Parameters<typeof animate>[1];
+type Options = NonNullable<Parameters<typeof animate>[2]>;
 
 interface Stage {
   root: HTMLElement;
   /** Anima y se resuelve al terminar. Lo que quede corriendo se cancela al retirar la cortina. */
   play: (targets: Element | Element[], keyframes: Keyframes, options: Options) => Promise<void>;
   /** Para lo que tiene que seguir andando cuando la cortina ya se fue (el confeti). */
-  animate: Motion['animate'];
-  stagger: Motion['stagger'];
+  animate: typeof animate;
+  stagger: typeof stagger;
   /** Centro del botón que se tocó (o de la pantalla), en coordenadas de la ventana. */
   origin: Origin;
   /** Medidas de la ventana y distancia del origen a la esquina más lejana. */
@@ -348,7 +350,6 @@ export async function playCurtain(
 ): Promise<void> {
   // Restos de una cortina o un confeti anterior: nunca hay dos.
   document.querySelectorAll('.curtain, .confetti').forEach((node) => node.remove());
-  const { animate, stagger } = await import('motion');
   if (signal?.aborted) return;
 
   const root = el('div', `curtain curtain--${id}`);

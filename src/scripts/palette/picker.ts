@@ -1,4 +1,4 @@
-import { setPalette, syncThemeColor } from './controller';
+import { prefetchCurtains, setPalette, syncThemeColor } from './controller';
 import { PALETTE_EVENT, currentPalette, isPaletteId } from './palettes';
 
 // Sin GSAP ni motion: el selector tiene que andar también con reduced motion y antes de que
@@ -35,6 +35,7 @@ function initPopover() {
   const isOpen = () => !menu.hidden;
 
   const open = () => {
+    prefetchCurtains();
     menu.hidden = false;
     button.setAttribute('aria-expanded', 'true');
     marked().focus();
@@ -105,6 +106,13 @@ function initPopover() {
 /** Grupo de botones dentro del menú mobile: elegir no cierra el menú. */
 function initGroups() {
   document.querySelectorAll<HTMLElement>('[data-palette-group]').forEach((group) => {
+    // El grupo se ve recién al abrir el menú: ahí se adelantan las cortinas (una sola vez).
+    const shown = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      shown.disconnect();
+      prefetchCurtains();
+    });
+    shown.observe(group);
     group.addEventListener('click', (e) => {
       const option = (e.target as Element).closest<HTMLElement>('[data-palette-option]');
       const id = option?.dataset.paletteOption;

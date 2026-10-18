@@ -1,3 +1,4 @@
+import { animate } from 'motion';
 import type { Gsap } from '../../motion/types';
 import { visualClone } from '../a11y';
 import { dispose } from '../dispose';
@@ -12,8 +13,6 @@ import { fitZone } from '../zone';
 //   - Con mouse, una estela de diez puntos sigue al puntero cada uno un poco más tarde.
 // Qué comunica: la ola avisa quién es el protagonista de la página y le responde al que lo toca; los
 // blobs y la estela son el color y el juego de la paleta, sin tapar texto (ver el CSS).
-
-type Motion = typeof import('motion');
 
 const noop = () => {};
 
@@ -101,7 +100,6 @@ function nameWave({ reason, finePointer }: ExtraCtx): () => void {
   let alive = true;
   let running = false;
   let lastEnd = Number.NEGATIVE_INFINITY;
-  let motion: Motion | null = null;
   let lead: number | undefined;
   let undo: Array<() => void> = [];
   const playing = new Set<{ cancel: () => void }>();
@@ -119,7 +117,7 @@ function nameWave({ reason, finePointer }: ExtraCtx): () => void {
     title.classList.remove('fx-wave');
   };
 
-  const bounce = async ({ animate }: Motion, char: HTMLElement, order: number, rise: number) => {
+  const bounce = async (char: HTMLElement, order: number, rise: number) => {
     const tilt = order % 2 ? TILT : -TILT;
     const up = animate(
       char,
@@ -136,7 +134,7 @@ function nameWave({ reason, finePointer }: ExtraCtx): () => void {
   };
 
   const wave = async () => {
-    if (!alive || running || !motion) return;
+    if (!alive || running) return;
     running = true;
     // Las letras suben por encima de la línea: el recorte de `.line` (para la entrada) se levanta.
     title.classList.add('fx-wave');
@@ -148,7 +146,7 @@ function nameWave({ reason, finePointer }: ExtraCtx): () => void {
         undo.push(parts.restore);
         for (const char of parts.chars) jumps.push([char, rise]);
       }
-      await Promise.all(jumps.map(([char, rise], i) => bounce(motion!, char, i, rise)));
+      await Promise.all(jumps.map(([char, rise], i) => bounce(char, i, rise)));
     } finally {
       finish();
     }
@@ -182,8 +180,6 @@ function nameWave({ reason, finePointer }: ExtraCtx): () => void {
   // y, al cambiar de paleta, a que la cortina se abra. Si el nombre quedó fuera de la vista (recarga
   // a mitad de página) no hay nada que ver y la ola no corre.
   const start = async () => {
-    motion = await import('motion');
-    if (!alive) return;
     const { top, bottom } = title.getBoundingClientRect();
     const visible = bottom > 0 && top < innerHeight;
     if (!visible || (reason === 'load' && waved)) return;

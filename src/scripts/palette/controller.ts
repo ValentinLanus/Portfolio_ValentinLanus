@@ -16,6 +16,22 @@ const CURTAIN_LIMIT_MS = 2000;
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const screenCentre = (): Origin => ({ x: innerWidth / 2, y: innerHeight / 2 });
 
+// Las cortinas, y motion con ellas, no se bajan al cargar: quien no cambia de paleta, o la cambia
+// con reduced motion, no las descarga.
+const loadCurtains = () => import('./curtains');
+
+/**
+ * Adelanta la descarga de las cortinas cuando se abre el selector (el popover de la barra o el
+ * menú mobile): para cuando se elige, ya están, y la primera cortina no espera a la red. Con
+ * reduced motion no hay cortinas y no se baja nada.
+ */
+export function prefetchCurtains(): void {
+  if (reducedMotion()) return;
+  loadCurtains().catch(() => {
+    // Sin red: el cambio las vuelve a pedir y, si tampoco llegan, es instantáneo.
+  });
+}
+
 /** Copia el fondo de la paleta activa a <meta name="theme-color"> (barra del navegador mobile). */
 export function syncThemeColor() {
   const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
@@ -69,10 +85,8 @@ async function transition({ id, origin }: Request) {
   // cansa de esperarlas.
   const abort = new AbortController();
   try {
-    // Las cortinas, y motion con ellas, se bajan recién acá: quien no cambia de paleta, o la cambia
-    // con reduced motion, no las descarga. Si el chunk no llega o no carga, el cambio es
-    // instantáneo.
-    const curtains = await within(import('./curtains'), CURTAIN_LIMIT_MS);
+    // Si el chunk no llega o no carga, el cambio es instantáneo.
+    const curtains = await within(loadCurtains(), CURTAIN_LIMIT_MS);
     if (curtains)
       await within(curtains.playCurtain(id, origin, swap, abort.signal), CURTAIN_LIMIT_MS);
   } catch (err) {
