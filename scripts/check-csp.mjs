@@ -44,8 +44,10 @@ for (const page of pages) {
 // para las fuentes, y esto lo frena si vuelve a pasar.)
 for (const file of readdirSync('dist/_astro').filter((f) => f.endsWith('.css'))) {
   const css = readFileSync(`dist/_astro/${file}`, 'utf8');
-  for (const [ref] of css.matchAll(/url\(\s*["']?(?:data:|https?:\/\/)[^)]{0,60}/g))
-    problems.push(`_astro/${file}: url() que la CSP bloquea: ${ref.slice(0, 80)}`);
+  const blocked =
+    /url\(\s*["']?(?:data:|blob:|https?:|\/\/)[^)]{0,60}|@import\s+["']?(?:https?:|\/\/)[^;]{0,60}/gi;
+  for (const [ref] of css.matchAll(blocked))
+    problems.push(`_astro/${file}: recurso que la CSP bloquea: ${ref.slice(0, 80)}`);
 }
 
 const missing = [...built].filter((h) => !declared.has(h));

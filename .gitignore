@@ -16,6 +16,7 @@ Thumbs.db
 # Solo locales: no hacen falta para construir ni desplegar el sitio
 CONTENT.md
 .claude/
+.superpowers/
 docs/
 tests/
 playwright.config.ts
