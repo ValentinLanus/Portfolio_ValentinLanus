@@ -7,11 +7,15 @@ import type { Extra, ExtraCtx } from '../extras';
 //     el avance de toda la página (0 arriba, 1 al final): el CSS (styles/extras.css) convierte ese
 //     número en color de cielo, altura del sol y paso del sol de amarillo a naranja. Acá solo se lo
 //     escribe en `--fx-p`; todo lo demás es CSS y solo toca color, transform y opacity.
+//   - El sol es un disco sólido que baja por el costado derecho, en la franja libre a la derecha de
+//     la columna de contenido (y se oculta donde no hay): su lugar, no una opacidad baja, garantiza
+//     que nunca quede detrás de un texto. La cuenta está en el CSS; los tests la miden contra todos
+//     los textos de la página.
 //   - Junto a cada título de sección brota una plantita que crece una vez, de abajo hacia arriba,
 //     cuando el título entra en la vista (guiño al campo de Lotecito).
 // Qué comunica: el paso del tiempo (cuánto se leyó y cuánto falta) y cuidado por lo que recién
-// empieza. Las capas son decoración: no tienen texto, no capturan el puntero y el contraste del
-// texto sobre ellas está medido en los tests (ver el comentario de Atardecer en extras.css).
+// empieza. Las capas son decoración: no tienen texto y no capturan el puntero. El contraste del
+// texto sobre el cielo está medido en los tests.
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 

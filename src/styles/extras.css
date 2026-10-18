@@ -431,12 +431,16 @@ html[data-palette='caramelo'] .hero__title.fx-wave .line {
    sol) y opacity (el paso del sol a naranja): nada de layout por fotograma.
 
    Contraste: axe no mide estas capas (no capturan el puntero), así que se midió a mano y los tests de
-   extras.spec.ts lo repiten. El peor caso es el sol detrás del texto, sobre el cielo claro de arriba:
-   --text-3 (#b89a92) sobre #3a2140 da 5.49:1; con el sol amarillo (#ffd36b) a su opacidad máxima
-   encima de ese cielo da 4.59:1 (a 0.15 daría 3.77:1, por debajo de AA). Por eso el sol queda en
-   0.075, la mitad del tope del diseño. Con el sol naranja (#ff7a3d) sobre el cielo de abajo,
-   --text-3 da 6.4:1. El resto de los textos (--text, --text-2, --accent) tienen más margen.
-   Medido así, cualquier punto de la página es seguro: no hace falta ubicar el sol lejos del texto. */
+   extras.spec.ts lo repiten.
+   - El CIELO sí queda detrás de todo el texto. Peor caso: --text-3 (#b89a92) sobre el extremo claro
+     (#3a2140): 5.49:1. --text da 12.85:1, --text-2 8.56:1, --accent 8.01:1. Contra el extremo
+     oscuro (#1a1024) todo sube.
+   - El SOL no queda detrás de ningún texto, nunca. La garantía no es una opacidad baja (el sol es un
+     disco sólido) sino su lugar. El sol es fijo y el contenido pasa por debajo, así que lo que
+     importa es la franja horizontal que ocupa contra dónde puede haber texto en cualquier punto del
+     scroll: el texto vive en la columna de contenido (un .container: máx. --max-w de ancho, centrado,
+     con --gutter de relleno a cada lado) y a la derecha de esa columna no hay texto en ningún lado.
+     El sol ocupa esa franja y ni un píxel más (ver .fx-sun). */
 html.fx-sky-on {
   background-color: var(--bg);
 }
@@ -464,28 +468,62 @@ html.fx-sky-on body {
   animation: fx-sky-in 0.9s ease-out backwards;
 }
 
-/* El sol: un degradé radial que se apaga hacia el borde, centrado a 74 % del ancho. Con el scroll
-   baja de 12vh a 70vh (el centro). Sobre el amarillo se funde el naranja de la tarde (`fx-sun-dusk`)
-   a medida que baja. La opacidad del conjunto es la que manda: nunca pasa de 0.15 y, por el
-   contraste de arriba, queda en 0.075. */
+/* El sol: un disco sólido (el color del sol, sin transparencia) con un halo suave de --fx-glow px
+   (un cuarto de la zona libre, entre 10 y 24: con poco margen el halo se afina para que se vea más
+   disco).
+   Baja con el scroll de 12vh a 70vh (el centro) por el costado derecho y pasa de amarillo a naranja
+   (`fx-sun-dusk`, encima, aparece con --fx-p).
+
+   Dónde está. A la derecha de la columna de contenido hay una franja libre de ancho
+     g = --gutter + max(0, (ancho - --max-w - 2 * --gutter) / 2)
+   (el relleno del contenedor, más el margen cuando la ventana es más ancha que el contenedor:
+   360 px a 1920, 120 a 1440, 83 a 1366, 64 de 1024 a 1328). Es la misma cuenta del .container de
+   global.css, con los mismos tokens, así que sigue sola al ancho de la ventana. Se mide contra el
+   ancho del bloque contenedor de un elemento fijo, que no cuenta la barra de scroll, igual que el
+   contenedor. A esa franja se le restan --fx-air px de aire contra el texto: queda la zona libre f.
+   - La caja del sol (disco y halo juntos) mide --fx-size: 2.4 f, entre 170 px y 300 px (y no más de
+     40vh). Nunca cruza el borde izquierdo de la zona libre.
+   - Si la caja entra en la zona (ventanas anchas: a 1920 el sol se ve entero) se centra en ella. Si
+     no entra (de 1024 a ~1500 px de ancho) su borde izquierdo queda justo en el de la zona y el resto
+     se sale por el borde derecho de la ventana: el sol asoma de costado, como si se pusiera detrás
+     del borde. Cuanto más ancho el margen, más sol se ve.
+   - Por debajo de 1024 px el margen es de 48 px o menos y no hay lugar para un sol con sentido: se
+     oculta (más abajo). El cielo sigue contando el recorrido.
+   Como el borde izquierdo de la caja no cruza el de la zona libre, que no tiene texto a ninguna
+   altura, el sol no puede quedar detrás de texto a ningún scroll, con ningún tamaño de letra (el
+   --gutter y el --max-w son en px y no cambian con el zoom de texto). Los tests lo miden contra
+   todos los textos de la página. */
 .fx-sun {
   --fx-sun-day: #ffd36b;
   --fx-sun-dusk: #ff7a3d;
-  --fx-sun-size: min(70vmin, 560px);
+  --fx-air: 12px;
+  /* El halo es solo estético: con vw (que cuenta la barra de scroll) alcanza. No puede usar
+     --fx-free: el % de esa cuenta se resolvería contra el largo del degradé y no contra el ancho
+     de la ventana. */
+  --fx-glow: clamp(
+    10px,
+    calc(
+      (var(--gutter) + max(0px, (100vw - var(--max-w) - 2 * var(--gutter)) / 2) - var(--fx-air)) *
+        0.25
+    ),
+    24px
+  );
+  --fx-free: calc(
+    var(--gutter) + max(0px, (100% - var(--max-w) - 2 * var(--gutter)) / 2) - var(--fx-air)
+  );
+  --fx-size: clamp(170px, calc(var(--fx-free) * 2.4), min(300px, 40vh));
   top: 12vh;
-  left: 74%;
-  width: var(--fx-sun-size);
+  left: calc(100% - var(--fx-free) + max(var(--fx-size), var(--fx-free)) / 2);
+  width: var(--fx-size);
   aspect-ratio: 1;
-  margin: calc(var(--fx-sun-size) / -2) 0 0 calc(var(--fx-sun-size) / -2);
-  border-radius: 50%;
+  margin: calc(var(--fx-size) / -2) 0 0 calc(var(--fx-size) / -2);
   background: radial-gradient(
     closest-side,
-    var(--fx-sun-day) 0 18%,
-    color-mix(in srgb, var(--fx-sun-day) 55%, transparent) 42%,
-    color-mix(in srgb, var(--fx-sun-day) 14%, transparent) 72%,
+    var(--fx-sun-day) calc(100% - var(--fx-glow) - 2px),
+    color-mix(in srgb, var(--fx-sun-day) 42%, transparent) calc(100% - var(--fx-glow) + 1px),
+    color-mix(in srgb, var(--fx-sun-day) 16%, transparent) calc(100% - var(--fx-glow) / 2),
     transparent
   );
-  opacity: 0.075;
   transform: translate3d(0, calc(var(--fx-p, 0) * 58vh), 0);
   will-change: transform;
   animation: fx-sun-in 0.9s ease-out backwards;
@@ -493,16 +531,22 @@ html.fx-sky-on body {
 .fx-sun-dusk {
   position: absolute;
   inset: 0;
-  border-radius: inherit;
   background: radial-gradient(
     closest-side,
-    var(--fx-sun-dusk) 0 18%,
-    color-mix(in srgb, var(--fx-sun-dusk) 55%, transparent) 42%,
-    color-mix(in srgb, var(--fx-sun-dusk) 14%, transparent) 72%,
+    var(--fx-sun-dusk) calc(100% - var(--fx-glow) - 2px),
+    color-mix(in srgb, var(--fx-sun-dusk) 42%, transparent) calc(100% - var(--fx-glow) + 1px),
+    color-mix(in srgb, var(--fx-sun-dusk) 16%, transparent) calc(100% - var(--fx-glow) / 2),
     transparent
   );
   opacity: var(--fx-p, 0);
   will-change: opacity;
+}
+/* Sin margen derecho que alcance (celulares y ventanas de menos de 1024 px: el --gutter es de 48 px
+   o menos, ver tokens.css, que usa este mismo corte) no hay sol. */
+@media (max-width: 1023.98px) {
+  .fx-sun {
+    display: none;
+  }
 }
 
 /* Al entrar, el cielo y el sol se funden desde el fondo de la paleta en vez de aparecer de golpe. */
