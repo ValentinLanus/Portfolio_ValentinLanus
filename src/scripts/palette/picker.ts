@@ -9,7 +9,11 @@ const centreOf = (el: Element) => {
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
 };
 
-/** Marca la opción de la paleta activa en todos los selectores de la página. */
+/**
+ * Marca la opción de la paleta activa en todos los selectores de la página, y la nombra en el botón
+ * del popover: "Cambiar paleta (actual: Arcade)". El foco vuelve a ese botón después de elegir, así
+ * que el lector de pantalla anuncia la paleta nueva.
+ */
 function syncOptions() {
   const now = currentPalette();
   document.querySelectorAll<HTMLElement>('[data-palette-option]').forEach((option) => {
@@ -18,6 +22,15 @@ function syncOptions() {
     for (const attr of ['aria-checked', 'aria-pressed']) {
       if (option.hasAttribute(attr)) option.setAttribute(attr, on);
     }
+  });
+  document.querySelectorAll<HTMLElement>('[data-palette-picker]').forEach((root) => {
+    const button = root.querySelector<HTMLElement>('[data-palette-button]');
+    const template = button?.dataset.paletteButton;
+    const name = root
+      .querySelector(`[data-palette-option="${now}"] .opt__name`)
+      ?.textContent?.trim();
+    if (button && template && name)
+      button.setAttribute('aria-label', template.replace('{name}', name));
   });
 }
 

@@ -25,7 +25,7 @@ const { locale, content } = Astro.props;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="preload" href={geistLatin} as="font" type="font/woff2" crossorigin />
-    {/* Aplica la paleta guardada antes de pintar. Ids = PALETTES (scripts/palette/palettes.ts). */}
+    {/* Aplica la paleta guardada antes de pintar. Ids = PALETTES (src/scripts/palette/palettes.ts). */}
     <script is:inline>
       document.documentElement.classList.add('js');
       try {

@@ -7,6 +7,9 @@ interface Props {
   palette: SiteContent['nav']['palette'];
 }
 const { variant, palette } = Astro.props;
+// El nombre del botón dice cuál es la paleta activa (al volver el foco tras elegir, el lector de
+// pantalla la anuncia). Sale con la de fábrica; picker.ts lo actualiza con la plantilla.
+const buttonLabel = palette.button.replace('{name}', palette.names[DEFAULT_PALETTE]);
 ---
 
 {variant === 'popover' ? (
@@ -17,8 +20,8 @@ const { variant, palette } = Astro.props;
       aria-haspopup="menu"
       aria-expanded="false"
       aria-controls="palette-menu"
-      aria-label={palette.button}
-      data-palette-button
+      aria-label={buttonLabel}
+      data-palette-button={palette.button}
     >
       <svg
         class="palette__icon"

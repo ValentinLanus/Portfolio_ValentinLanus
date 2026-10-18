@@ -13,9 +13,9 @@ import {
 //   - Cada paleta es un módulo con `export default` de un `Extra`. El mapa de abajo tiene un
 //     import dinámico estático por paleta: el bundler hace un chunk por extra y solo se baja el de
 //     la paleta activa (y el de la siguiente, si se cambia).
-//   - `Record<PaletteId, ...>` obliga a que toda paleta nueva tenga su entrada. Las que todavía no
-//     tienen extra propio (caramelo, lava, atardecer) apuntan a un stub que devuelve un cleanup
-//     vacío; la tarea que las completa solo reemplaza el cuerpo de su archivo.
+//   - `Record<PaletteId, ...>` obliga a que toda paleta nueva tenga su entrada: un archivo en
+//     extras/ con su `Extra` (si una paleta no tuviera adornos propios, uno que devuelva un cleanup
+//     vacío).
 //   - Reglas para quien escriba un extra: todo elemento decorativo lleva `aria-hidden="true"` y
 //     una clase `fx-*`; todo lo que se crea (nodos, triggers, tweens, listeners, clases) se
 //     deshace en el cleanup; el texto que se anima pasa por `visualClone` (a11y.ts).

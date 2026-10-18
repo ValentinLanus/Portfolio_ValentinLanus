@@ -54,7 +54,12 @@ export interface SiteContent {
     close: string;
     toTop: string;
     lang: { current: string; other: string; otherName: string };
-    palette: { button: string; title: string; names: Record<PaletteId, string> };
+    palette: {
+      /** Nombre accesible del botón del selector. `{name}` se reemplaza por la paleta activa. */
+      button: string;
+      title: string;
+      names: Record<PaletteId, string>;
+    };
   };
   hero: {
     eyebrow: string;

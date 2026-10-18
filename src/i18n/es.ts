@@ -20,7 +20,7 @@ export default {
     toTop: 'Volver arriba',
     lang: { current: 'ES', other: 'EN', otherName: 'English' },
     palette: {
-      button: 'Cambiar paleta',
+      button: 'Cambiar paleta (actual: {name})',
       title: 'Paleta',
       names: {
         terminal: 'Terminal',

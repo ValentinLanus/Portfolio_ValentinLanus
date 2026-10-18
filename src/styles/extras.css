@@ -126,6 +126,21 @@ main:has(.fx-blobs, .fx-lava) {
   z-index: -1;
   pointer-events: none;
 }
+/* La capa nace cuando llega el chunk del extra (en un celular lento, un par de segundos después de
+   que el hero ya se pintó): entra con un fundido corto desde el fondo en vez de aparecer de golpe.
+   La opacidad final es la de cada capa (la de .fx-lava, la que miden los tests de contraste). Con
+   reduced motion los extras no arrancan; igual el fundido queda solo para quien acepta movimiento. */
+@media (prefers-reduced-motion: no-preference) {
+  .fx-blobs,
+  .fx-lava {
+    animation: fx-layer-in 0.6s ease-out backwards;
+  }
+}
+@keyframes fx-layer-in {
+  from {
+    opacity: 0;
+  }
+}
 /* Pantalla ancha: la derecha del texto está libre, de la barra hacia abajo, y la capa pasa a ser una
    columna ahí. Dos condiciones, las dos necesarias:
    - el contenedor (@container, en em): con letra más grande el mismo ancho vale menos em, así que

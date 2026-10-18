@@ -209,7 +209,7 @@ const LENGTH = Number((2 * Math.PI * R).toFixed(2));
   }
 
   /* Caramelo: píldora de color pleno, más ancha que alta, con una sombra de caramelo debajo.
-     Entra con un resorte que se pasa un poco y, con el mouse encima, rebota. */
+     Entra con un resorte que se pasa un poco y, con el mouse encima, la flecha rebota. */
   :global(html[data-palette='caramelo']) .totop {
     --totop-edge: var(--accent);
     --totop-fill: var(--accent);
@@ -249,6 +249,12 @@ const LENGTH = Number((2 * Math.PI * R).toFixed(2));
     stroke-width: 3;
   }
 
+  /* Con el mouse encima, la flecha salta hacia arriba y rebota dentro de la píldora. Se anima la
+     flecha, no el botón: el botón es el blanco del :hover, y si subiera, con el puntero cerca de su
+     borde de abajo se le escaparía, el hover se cortaría y el rebote empezaría de nuevo una y otra
+     vez. Tampoco el svg entero: el anillo de progreso saldría de la píldora (y fuera de ella es del
+     color del fondo). Sin fotograma final: el último tramo llega a la posición de hover de la flecha
+     (translateY(-2px), más arriba), sin salto al terminar. */
   @keyframes totop-bounce {
     0% {
       transform: translateY(0);
@@ -265,15 +271,9 @@ const LENGTH = Number((2 * Math.PI * R).toFixed(2));
     84% {
       transform: translateY(0);
     }
-    92% {
-      transform: translateY(-1px);
-    }
-    100% {
-      transform: translateY(0);
-    }
   }
   @media (prefers-reduced-motion: no-preference) {
-    :global(html[data-palette='caramelo']) .totop:hover {
+    :global(html[data-palette='caramelo']) .totop:hover .totop__arrow {
       animation: totop-bounce 0.7s var(--ease-out);
     }
   }
