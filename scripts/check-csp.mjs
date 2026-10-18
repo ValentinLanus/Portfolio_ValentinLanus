@@ -39,6 +39,15 @@ for (const page of pages) {
     problems.push(`${page}: recurso de otro origen: ${tag.slice(0, 120)}`);
 }
 
+// Las hojas también: font-src/img-src 'self' bloquean `data:` y otros orígenes dentro de url().
+// (Vite inlinea como data: los assets chicos que una hoja referencia; astro.config.mjs lo evita
+// para las fuentes, y esto lo frena si vuelve a pasar.)
+for (const file of readdirSync('dist/_astro').filter((f) => f.endsWith('.css'))) {
+  const css = readFileSync(`dist/_astro/${file}`, 'utf8');
+  for (const [ref] of css.matchAll(/url\(\s*["']?(?:data:|https?:\/\/)[^)]{0,60}/g))
+    problems.push(`_astro/${file}: url() que la CSP bloquea: ${ref.slice(0, 80)}`);
+}
+
 const missing = [...built].filter((h) => !declared.has(h));
 const stale = [...declared].filter((h) => !built.has(h));
 if (missing.length || stale.length)
@@ -50,5 +59,5 @@ if (missing.length || stale.length)
 
 if (problems.length) fail(problems.join('\n  '));
 console.log(
-  `\n✓ CSP: ${built.size} scripts inline con hash, sin estilos inline ni recursos externos\n`,
+  `\n✓ CSP: ${built.size} scripts inline con hash, sin estilos inline, recursos externos ni data: en el CSS\n`,
 );

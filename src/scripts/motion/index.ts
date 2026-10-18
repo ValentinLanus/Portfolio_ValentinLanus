@@ -1,3 +1,4 @@
+import { dispose } from '../palette/dispose';
 import { startExtras } from '../palette/extras';
 import { about } from './about';
 import { contact } from './contact';
@@ -62,7 +63,9 @@ async function start() {
       } catch (err) {
         console.error('[motion]', err);
       }
-      return () => cleanups.forEach((off) => off());
+      // Un cleanup que tira no puede saltear a los siguientes: el de los extras va último y, si no
+      // corre, al rearmar el contexto quedarían dos extras vivos.
+      return () => dispose(cleanups, '[motion]');
     },
   );
 

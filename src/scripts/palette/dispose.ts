@@ -3,12 +3,12 @@
  * quedó sin deshacer (un trigger, un timer, una capa) seguiría vivo en una paleta que ya no es la
  * suya.
  */
-export function dispose(offs: Array<() => void>): void {
+export function dispose(offs: Array<() => void>, label = '[palette]'): void {
   for (const off of offs) {
     try {
       off();
     } catch (err) {
-      console.error('[palette]', err);
+      console.error(label, err);
     }
   }
 }
