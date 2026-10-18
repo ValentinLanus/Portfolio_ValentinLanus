@@ -4,7 +4,8 @@
 
    Capas: nav 50, menú mobile 60, barra de progreso 70, scanlines 80, estela de Caramelo 85,
    cortina y confeti 90, skip-link 100 (ver también curtains.css). Las capas de Caramelo y Lava
-   detrás del hero van en z-index -1 dentro del hero, que aísla su contexto de apilamiento. */
+   detrás del hero van en z-index -1 dentro del hero, que aísla su contexto de apilamiento. El cielo
+   y el sol de Atardecer van en z-index -1 en el contexto raíz: detrás de todo el contenido. */
 
 /* ---- Terminal: el rol se escribe con un cursor de bloque ---------------------------------- */
 
@@ -412,4 +413,147 @@ html[data-palette='caramelo'] .hero__title.fx-wave .line {
 }
 .fx-lava[data-paused] .fx-bubble {
   animation-play-state: paused;
+}
+
+/* ---- Atardecer: cielo, sol y brotes -------------------------------------------------------- */
+
+/* El cielo y el sol son dos capas fijas con z-index -1: quedan detrás de todo el contenido y delante
+   del fondo de <html>. Con el extra activo (atardecer.ts le pone fx-sky-on a <html>) el body deja de
+   pintar --bg y el fondo que se ve es el cielo; sin la clase (sin JS, con reduced motion, con otra
+   paleta) el body pinta --bg como siempre. <html> sigue pintando --bg: es lo que se ve donde el
+   cielo no llega (el rebote de scroll en mobile y en el trackpad, y el instante en que el cielo se
+   funde al entrar), así que nunca aparece blanco. Es el mismo color que el body tenía un momento
+   antes, y queda entre los dos extremos del cielo. Las tarjetas y demás superficies con fondo propio
+   siguen tapando el cielo, como antes tapaban --bg.
+
+   Todo se mueve con un solo número, --fx-p (0 arriba de la página, 1 al final; lo escribe el script
+   en las dos capas). Lo que cambia con él es background-color (el cielo), transform (la altura del
+   sol) y opacity (el paso del sol a naranja): nada de layout por fotograma.
+
+   Contraste: axe no mide estas capas (no capturan el puntero), así que se midió a mano y los tests de
+   extras.spec.ts lo repiten. El peor caso es el sol detrás del texto, sobre el cielo claro de arriba:
+   --text-3 (#b89a92) sobre #3a2140 da 5.49:1; con el sol amarillo (#ffd36b) a su opacidad máxima
+   encima de ese cielo da 4.59:1 (a 0.15 daría 3.77:1, por debajo de AA). Por eso el sol queda en
+   0.075, la mitad del tope del diseño. Con el sol naranja (#ff7a3d) sobre el cielo de abajo,
+   --text-3 da 6.4:1. El resto de los textos (--text, --text-2, --accent) tienen más margen.
+   Medido así, cualquier punto de la página es seguro: no hace falta ubicar el sol lejos del texto. */
+html.fx-sky-on {
+  background-color: var(--bg);
+}
+html.fx-sky-on body {
+  background: transparent;
+}
+
+.fx-sky,
+.fx-sun {
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.fx-sky {
+  --fx-sky-top: #3a2140;
+  --fx-sky-bottom: #1a1024;
+  inset: 0;
+  background-color: var(--fx-sky-top);
+  background-color: color-mix(
+    in srgb,
+    var(--fx-sky-bottom) calc(var(--fx-p, 0) * 100%),
+    var(--fx-sky-top)
+  );
+  animation: fx-sky-in 0.9s ease-out backwards;
+}
+
+/* El sol: un degradé radial que se apaga hacia el borde, centrado a 74 % del ancho. Con el scroll
+   baja de 12vh a 70vh (el centro). Sobre el amarillo se funde el naranja de la tarde (`fx-sun-dusk`)
+   a medida que baja. La opacidad del conjunto es la que manda: nunca pasa de 0.15 y, por el
+   contraste de arriba, queda en 0.075. */
+.fx-sun {
+  --fx-sun-day: #ffd36b;
+  --fx-sun-dusk: #ff7a3d;
+  --fx-sun-size: min(70vmin, 560px);
+  top: 12vh;
+  left: 74%;
+  width: var(--fx-sun-size);
+  aspect-ratio: 1;
+  margin: calc(var(--fx-sun-size) / -2) 0 0 calc(var(--fx-sun-size) / -2);
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    var(--fx-sun-day) 0 18%,
+    color-mix(in srgb, var(--fx-sun-day) 55%, transparent) 42%,
+    color-mix(in srgb, var(--fx-sun-day) 14%, transparent) 72%,
+    transparent
+  );
+  opacity: 0.075;
+  transform: translate3d(0, calc(var(--fx-p, 0) * 58vh), 0);
+  will-change: transform;
+  animation: fx-sun-in 0.9s ease-out backwards;
+}
+.fx-sun-dusk {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    closest-side,
+    var(--fx-sun-dusk) 0 18%,
+    color-mix(in srgb, var(--fx-sun-dusk) 55%, transparent) 42%,
+    color-mix(in srgb, var(--fx-sun-dusk) 14%, transparent) 72%,
+    transparent
+  );
+  opacity: var(--fx-p, 0);
+  will-change: opacity;
+}
+
+/* Al entrar, el cielo y el sol se funden desde el fondo de la paleta en vez de aparecer de golpe. */
+@keyframes fx-sky-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fx-sun-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* El brote vive en el margen izquierdo del título: fuera del flujo (no mueve el título ni nada) y
+   en el relleno del contenedor, que siempre tiene --gutter de ancho y nunca tiene contenido. Se ata
+   al borde de ARRIBA del título, no al de abajo: en "Sobre mí" el h2 es una celda de la grilla tan
+   alta como el texto de al lado, y el brote tiene que quedar junto a la primera línea. Su caja mide
+   0.89 em de alto (el título menos lo que baja la línea de base: la base de la planta queda en la
+   línea de base del texto) y 0.6 em de ancho, pero nunca más ancho que el margen menos 8 px (4 de
+   aire contra el texto y 4 contra el borde de la ventana): con letra más grande el dibujo se achica
+   (preserveAspectRatio lo mantiene pegado a la base y al texto) en vez de pisar una letra. Crece
+   desde la base (scaleY en atardecer.ts). El SVG es aria-hidden y no tiene texto: el nombre del
+   título es el mismo con y sin brote. */
+.section__title:has(> .fx-sprout) {
+  position: relative;
+}
+.fx-sprout {
+  position: absolute;
+  top: 0;
+  right: calc(100% + 4px);
+  width: min(0.6em, calc(var(--gutter) - 8px));
+  height: 0.89em;
+  overflow: visible;
+  color: var(--accent-2);
+  transform-origin: 50% 100%;
+  pointer-events: none;
+}
+.fx-sprout ellipse {
+  fill: var(--accent);
+}
+
+/* Modos que piden menos efectos o colores propios (alto contraste, colores forzados) y papel: ni
+   cielo, ni sol, ni brotes, y el body vuelve a pintar --bg. */
+@media (forced-colors: active), (prefers-contrast: more), print {
+  .fx-sky,
+  .fx-sun,
+  .fx-sprout {
+    display: none;
+  }
+  html.fx-sky-on body {
+    background: var(--bg);
+  }
 }
