@@ -1,3 +1,4 @@
+import { loadDisplayFont } from './fonts';
 import {
   PALETTE_EVENT,
   STORAGE_KEY,
@@ -60,6 +61,10 @@ async function transition({ id, origin }: Request) {
     applyPalette(id);
   };
   if (reducedMotion()) return swap();
+  // La tipografía de títulos de la paleta nueva empieza a bajar ya, mientras la cortina tapa. No se
+  // la espera: si llega después de la cortina, los títulos se reacomodan solos y motion vuelve a
+  // medir (motion/index.ts).
+  void loadDisplayFont(id);
   // Pasa a las cortinas para que cancelen su animación y se saquen del DOM si el controlador se
   // cansa de esperarlas.
   const abort = new AbortController();

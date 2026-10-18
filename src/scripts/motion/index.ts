@@ -1,5 +1,7 @@
 import { dispose } from '../palette/dispose';
 import { startExtras } from '../palette/extras';
+import { loadDisplayFont } from '../palette/fonts';
+import { PALETTE_EVENT, currentPalette, type PaletteChangeDetail } from '../palette/palettes';
 import { about } from './about';
 import { contact } from './contact';
 import { initLenis } from './lenis';
@@ -9,7 +11,7 @@ import { progress } from './progress';
 import { projects } from './projects';
 import { stack } from './stack';
 import { bindToTopFocus, toTop, watchToTop } from './totop';
-import type { MotionModule } from './types';
+import type { MotionModule, ScrollTriggerT } from './types';
 
 // lotecito va antes de projects: el pin agrega altura y los triggers posteriores deben medirla.
 const modules: MotionModule[] = [progress, toTop, about, stack, lotecito, projects, contact];
@@ -20,6 +22,68 @@ const whenIdle = (cb: () => void) =>
   'requestIdleCallback' in window
     ? requestIdleCallback(cb, { timeout: 1500 })
     : setTimeout(cb, 200);
+
+/**
+ * Lo que el lector tiene delante: el elemento del contenido que está a un tercio de la altura de
+ * la pantalla (o en el centro, si ahí no hay nada). Se descartan la cortina y la barra, que están
+ * fijas encima. Puede ser un elemento del bloque pineado de Lotecito: se mide donde se ve.
+ */
+function readingAnchor(): Element | null {
+  const x = innerWidth / 2;
+  for (const y of [innerHeight / 3, innerHeight / 2]) {
+    for (const el of document.elementsFromPoint(x, y)) {
+      if (el.closest('.curtain, .confetti, .nav')) continue;
+      if (el.closest('main, footer')) return el;
+    }
+  }
+  return null;
+}
+
+/**
+ * `ScrollTrigger.refresh()` sin que se mueva lo que se está leyendo. El refresh devuelve el
+ * scroll al mismo número, pero si cambió dónde empieza el pin (o si el bloque dejó de entrar y se
+ * despinea) el contenido puede quedar corrido: se mide el ancla en pantalla antes y después y se
+ * compensa la diferencia.
+ */
+function refreshInPlace(ScrollTrigger: ScrollTriggerT) {
+  const anchor = readingAnchor();
+  const before = anchor?.getBoundingClientRect().top ?? 0;
+  ScrollTrigger.refresh();
+  if (!anchor?.isConnected) return;
+  const shift = anchor.getBoundingClientRect().top - before;
+  if (Math.abs(shift) < 1) return;
+  window.scrollTo({ top: window.scrollY + shift, behavior: 'instant' });
+  ScrollTrigger.update();
+}
+
+/**
+ * Cambiar de paleta cambia la métrica de los títulos (Arcade: Silkscreen, más altura de línea y
+ * tamaños redondeados a 8px), y con ella dónde empieza el pin de Lotecito y el largo de la página
+ * (barra de progreso, anillo de volver arriba, cielo de Atardecer). ScrollTrigger vuelve a medir
+ * en el cuadro siguiente al cambio (la cortina todavía tapa) y otra vez cuando llega la tipografía
+ * de la paleta nueva, que con una red lenta puede tardar más que la cortina.
+ */
+function remeasureOnPalette(ScrollTrigger: ScrollTriggerT): () => void {
+  let frame = 0;
+  let alive = true;
+  const remeasure = () => {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => refreshInPlace(ScrollTrigger));
+  };
+  const onChange = (e: Event) => {
+    const { id } = (e as CustomEvent<PaletteChangeDetail>).detail;
+    remeasure();
+    void loadDisplayFont(id).then(() => {
+      if (alive && currentPalette() === id) remeasure();
+    });
+  };
+  document.addEventListener(PALETTE_EVENT, onChange);
+  return () => {
+    alive = false;
+    cancelAnimationFrame(frame);
+    document.removeEventListener(PALETTE_EVENT, onChange);
+  };
+}
 
 async function start() {
   const [{ gsap }, { ScrollTrigger }] = await Promise.all([
@@ -55,6 +119,7 @@ async function start() {
           console.error('[motion]', err);
         }
       }
+      cleanups.push(remeasureOnPalette(ScrollTrigger));
       // Extras de la paleta activa (tipeo de Terminal, scanlines de Arcade...). Van después de los
       // módulos: sus triggers se miden con el pin de Lotecito ya armado. Con reduced motion no
       // se llega acá (se sale antes), así que no se crea ni se descarga nada.
