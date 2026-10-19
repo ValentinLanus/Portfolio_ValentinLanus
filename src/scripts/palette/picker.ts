@@ -1,5 +1,5 @@
 import { prefetchCurtains, setPalette, syncThemeColor } from './controller';
-import { PALETTE_EVENT, currentPalette, isPaletteId } from './palettes';
+import { PALETTE_EVENT, currentPalette, isPaletteId, type PaletteId } from './palettes';
 
 // Sin GSAP ni motion: el selector tiene que andar también con reduced motion y antes de que
 // el motion termine de cargar.
@@ -10,12 +10,12 @@ const centreOf = (el: Element) => {
 };
 
 /**
- * Marca la opción de la paleta activa en todos los selectores de la página, y la nombra en el botón
- * del popover: "Cambiar paleta (actual: Arcade)". El foco vuelve a ese botón después de elegir, así
- * que el lector de pantalla anuncia la paleta nueva.
+ * Marca la opción de `now` en todos los selectores de la página, y la nombra en el botón del
+ * popover: "Cambiar paleta (actual: Arcade)". Al elegir se llama con la elegida antes de devolver el
+ * foco al botón (el cambio en sí espera a la cortina): así el lector de pantalla anuncia la paleta
+ * nueva y no la vieja. `palette:change` vuelve a marcar la que quedó puesta, venga de donde venga.
  */
-function syncOptions() {
-  const now = currentPalette();
+function markPalette(now: PaletteId) {
   document.querySelectorAll<HTMLElement>('[data-palette-option]').forEach((option) => {
     const on = String(option.dataset.paletteOption === now);
     // menuitemradio (popover) usa aria-checked; los botones del menú mobile, aria-pressed.
@@ -30,7 +30,10 @@ function syncOptions() {
       .querySelector(`[data-palette-option="${now}"] .opt__name`)
       ?.textContent?.trim();
     if (button && template && name)
-      button.setAttribute('aria-label', template.replace('{name}', name));
+      button.setAttribute(
+        'aria-label',
+        template.replace('{name}', () => name),
+      );
   });
 }
 
@@ -75,6 +78,7 @@ function initPopover() {
     const option = (e.target as Element).closest<HTMLElement>('[data-palette-option]');
     const id = option?.dataset.paletteOption;
     if (!option || !isPaletteId(id)) return;
+    markPalette(id);
     close(true);
     void setPalette(id, centreOf(button));
   });
@@ -129,14 +133,18 @@ function initGroups() {
     group.addEventListener('click', (e) => {
       const option = (e.target as Element).closest<HTMLElement>('[data-palette-option]');
       const id = option?.dataset.paletteOption;
-      if (option && isPaletteId(id)) void setPalette(id, centreOf(option));
+      if (!option || !isPaletteId(id)) return;
+      // El botón tocado conserva el foco: su aria-pressed se anuncia ya, no al terminar la cortina.
+      markPalette(id);
+      void setPalette(id, centreOf(option));
     });
   });
 }
 
 export function initPicker(): void {
-  syncOptions();
-  document.addEventListener(PALETTE_EVENT, syncOptions);
+  const sync = () => markPalette(currentPalette());
+  sync();
+  document.addEventListener(PALETTE_EVENT, sync);
   initPopover();
   initGroups();
   // El <meta theme-color> sale de fábrica con el fondo de Terminal: si la página cargó con otra
