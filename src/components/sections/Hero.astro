@@ -39,7 +39,10 @@ const { hero } = Astro.props;
 
 <style>
   .hero {
-    min-height: 100dvh;
+    /* svh (alto con la barra del navegador visible) y no dvh: en mobile la barra se esconde al
+       bajar, dvh crece ~56 px y el inicio, con el contenido pegado abajo, corría todo. */
+    min-height: 100vh;
+    min-height: 100svh;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
