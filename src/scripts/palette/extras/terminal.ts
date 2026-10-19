@@ -1,7 +1,7 @@
 import { ScrambleTextPlugin } from 'gsap/ScrambleTextPlugin';
-import type { Gsap, ScrollTriggerT } from '../../motion/types';
+import type { Gsap } from '../../motion/types';
 import { visualClone } from '../a11y';
-import { dispose } from '../dispose';
+import { dispose, noop, startParts } from '../dispose';
 import type { Extra, ExtraCtx } from '../extras';
 
 // Terminal: el sitio se comporta como una consola.
@@ -22,9 +22,6 @@ const [LT, GT] = ['‹', '›'];
 const SCRAMBLE_CHARS = `01${LT}${GT}/_`;
 const unmask = (s: string) => s.replaceAll(LT, '<').replaceAll(GT, '>');
 
-type ExtraReason = ExtraCtx['reason'];
-
-const noop = () => {};
 const random = (min: number, max: number) => min + Math.random() * (max - min);
 
 /** Títulos que ya se descifraron. Vive con el módulo: al volver a Terminal no se repite. */
@@ -46,7 +43,7 @@ function entryDelay(el: HTMLElement) {
  * así que nada de lo que está debajo se mueve ni se reacomoda. Al terminar se devuelve el texto
  * original (los mismos nodos) y el cursor se queda al final.
  */
-function typeRole(reason: ExtraReason): () => void {
+function typeRole({ reason, revealed }: ExtraCtx): () => void {
   const role = document.querySelector<HTMLElement>('.hero__role');
   const text = role?.textContent ?? '';
   if (!role || !text) return noop;
@@ -55,6 +52,7 @@ function typeRole(reason: ExtraReason): () => void {
   caret.className = 'fx-caret';
   caret.setAttribute('aria-hidden', 'true');
 
+  let alive = true;
   let restore: (() => void) | null = null;
   let timer: number | undefined;
 
@@ -65,6 +63,7 @@ function typeRole(reason: ExtraReason): () => void {
     role.append(caret);
   };
   const off = () => {
+    alive = false;
     clearTimeout(timer);
     restore?.();
     restore = null;
@@ -108,8 +107,11 @@ function typeRole(reason: ExtraReason): () => void {
       random(TYPE_MIN_MS, TYPE_MAX_MS),
     );
   };
-  // El primer carácter espera a que el rol termine de aparecer (su entrada CSS tiene retraso).
-  timer = window.setTimeout(step, entryDelay(role));
+  // El primer carácter espera a que el rol termine de aparecer (su entrada CSS tiene retraso) y, al
+  // cambiar a Terminal, a que la cortina se vaya: debajo de ella, el tipeo no lo vería nadie.
+  void revealed.then(() => {
+    if (alive) timer = window.setTimeout(step, entryDelay(role));
+  });
   return off;
 }
 
@@ -147,20 +149,24 @@ function decipher(gsap: Gsap, title: HTMLElement): () => void {
   return end;
 }
 
-function decipherTitles(gsap: Gsap, ScrollTrigger: ScrollTriggerT): () => void {
+function decipherTitles({ gsap, ScrollTrigger, revealed }: ExtraCtx): () => void {
   const offs: Array<() => void> = [];
   document.querySelectorAll<HTMLElement>('h2.section__title').forEach((title) => {
     if (deciphered.has(title)) return;
+    let alive = true;
     let stop = noop;
     const trigger = ScrollTrigger.create({
       trigger: title,
       start: 'top 85%',
       once: true,
-      onEnter: () => {
-        stop = decipher(gsap, title);
-      },
+      // Un título que ya se ve al cambiar a Terminal se descifra cuando la cortina se va.
+      onEnter: () =>
+        void revealed.then(() => {
+          if (alive) stop = decipher(gsap, title);
+        }),
     });
     offs.push(() => {
+      alive = false;
       trigger.kill();
       stop();
     });
@@ -168,18 +174,9 @@ function decipherTitles(gsap: Gsap, ScrollTrigger: ScrollTriggerT): () => void {
   return () => dispose(offs);
 }
 
-const terminal: Extra = ({ gsap, ScrollTrigger, reason }) => {
-  gsap.registerPlugin(ScrambleTextPlugin);
-  const offs: Array<() => void> = [];
-  // Un efecto que falla no se lleva puesto al otro.
-  for (const start of [() => typeRole(reason), () => decipherTitles(gsap, ScrollTrigger)]) {
-    try {
-      offs.push(start());
-    } catch (err) {
-      console.error('[extras]', err);
-    }
-  }
-  return () => dispose(offs);
+const terminal: Extra = (ctx) => {
+  ctx.gsap.registerPlugin(ScrambleTextPlugin);
+  return startParts([() => typeRole(ctx), () => decipherTitles(ctx)]);
 };
 
 export default terminal;

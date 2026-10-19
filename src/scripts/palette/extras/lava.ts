@@ -1,5 +1,5 @@
 import type { Gsap } from '../../motion/types';
-import { dispose } from '../dispose';
+import { noop, startParts } from '../dispose';
 import type { Extra } from '../extras';
 import { fitZone } from '../zone';
 
@@ -14,8 +14,6 @@ import { fitZone } from '../zone';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const GOO_ID = 'fx-goo';
-
-const noop = () => {};
 
 // El estiramiento de los botones.
 /** Distancia (px) desde el borde del botón a la que el puntero empieza a hacerlo ceder. */
@@ -190,19 +188,8 @@ function stretchButtons(gsap: Gsap): () => void {
   };
 }
 
-const lava: Extra = ({ gsap, finePointer }) => {
-  // El filtro va primero: la capa lo referencia por id.
-  const parts = [gooFilter, bubbles, ...(finePointer ? [() => stretchButtons(gsap)] : [])];
-  const offs: Array<() => void> = [];
-  // Una pieza que falla no se lleva puestas a las otras.
-  for (const start of parts) {
-    try {
-      offs.push(start());
-    } catch (err) {
-      console.error('[extras]', err);
-    }
-  }
-  return () => dispose(offs);
-};
+// El filtro va primero: la capa lo referencia por id.
+const lava: Extra = ({ gsap, finePointer }) =>
+  startParts([gooFilter, bubbles, ...(finePointer ? [() => stretchButtons(gsap)] : [])]);
 
 export default lava;

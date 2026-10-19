@@ -1,5 +1,6 @@
 import type { Gsap, ScrollTriggerT } from '../motion/types';
-import { dispose } from './dispose';
+import { settled } from './controller';
+import { dispose, noop } from './dispose';
 import {
   PALETTE_EVENT,
   currentPalette,
@@ -35,6 +36,12 @@ export interface ExtraCtx {
    * lo que el usuario ya está viendo.
    */
   reason: 'load' | 'switch';
+  /**
+   * Se resuelve cuando la cortina del cambio ya se fue (en `load`, ya está resuelta). Lo que un
+   * extra anima a la vista al arrancar (una ola, un tipeo, un brote que crece) la espera: debajo de
+   * la cortina no lo vería nadie.
+   */
+  revealed: Promise<void>;
 }
 
 export type Extra = (ctx: ExtraCtx) => () => void;
@@ -47,14 +54,14 @@ const EXTRAS: Record<PaletteId, () => Promise<{ default: Extra }>> = {
   atardecer: () => import('./extras/atardecer'),
 };
 
-const noop = () => {};
-
 /**
  * Arranca el extra de la paleta activa y lo cambia cuando cambia la paleta. Se llama desde el
  * contexto de matchMedia de motion/index.ts (no en la rama de reduced motion). Devuelve el
  * cleanup total: saca el listener y deshace el extra que esté corriendo.
  */
-export function startExtras(ctx: Omit<ExtraCtx, 'finePointer' | 'reason'>): () => void {
+export function startExtras(
+  ctx: Omit<ExtraCtx, 'finePointer' | 'reason' | 'revealed'>,
+): () => void {
   const base = { ...ctx, finePointer: matchMedia('(pointer: fine)').matches };
   let stop = noop;
   // Cada pedido de arranque tiene su número: si la paleta cambia mientras el chunk baja, el
@@ -70,6 +77,8 @@ export function startExtras(ctx: Omit<ExtraCtx, 'finePointer' | 'reason'>): () =
 
   const run = async (id: PaletteId, reason: ExtraCtx['reason']) => {
     const mine = ++turn;
+    // La señal se toma ya, con el evento recién despachado: es la del cambio que está en curso.
+    const revealed = reason === 'switch' ? settled() : Promise.resolve();
     // Primero se limpia el anterior, con el evento recién despachado (la pantalla sigue tapada
     // por la cortina); recién después se carga el nuevo. Un cleanup que tira no puede impedir
     // que arranque el siguiente ni dejarse como el que hay que volver a correr.
@@ -77,7 +86,7 @@ export function startExtras(ctx: Omit<ExtraCtx, 'finePointer' | 'reason'>): () =
     try {
       const { default: extra } = await EXTRAS[id]();
       if (!alive || mine !== turn) return;
-      stop = extra({ ...base, reason });
+      stop = extra({ ...base, reason, revealed });
     } catch (err) {
       // Un extra roto o un chunk que no llega no tumban el sitio: queda sin ese adorno.
       console.error('[extras]', err);

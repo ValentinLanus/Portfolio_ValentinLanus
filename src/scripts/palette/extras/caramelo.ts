@@ -1,7 +1,7 @@
 import { animate } from 'motion';
 import type { Gsap } from '../../motion/types';
 import { visualClone } from '../a11y';
-import { dispose } from '../dispose';
+import { dispose, noop, startParts } from '../dispose';
 import type { Extra, ExtraCtx } from '../extras';
 import { fitZone } from '../zone';
 
@@ -14,16 +14,12 @@ import { fitZone } from '../zone';
 // Qué comunica: la ola avisa quién es el protagonista de la página y le responde al que lo toca; los
 // blobs y la estela son el color y el juego de la paleta, sin tapar texto (ver el CSS).
 
-const noop = () => {};
-
 // La ola. Cada letra sube `RISE` em y vuelve con rebote; las letras salen con `STAGGER` s entre sí.
 const RISE = 0.2;
 const STAGGER = 0.055;
 const TILT = 5;
 /** Después de una ola, el mouse tiene que esperar esto para disparar otra. */
 const COOLDOWN_MS = 500;
-/** Al cambiar a Caramelo la cortina todavía se está abriendo: la ola espera a que se vea. */
-const SWITCH_LEAD_MS = 450;
 
 // La estela.
 const TRAIL_DOTS = 10;
@@ -92,7 +88,7 @@ function split(word: HTMLElement) {
  * La ola del nombre. Corre sobre las letras ya visibles, sin ocultarlas ni desarmarlas antes: lo que
  * el usuario está leyendo no desaparece para volver a aparecer.
  */
-function nameWave({ reason, finePointer }: ExtraCtx): () => void {
+function nameWave({ reason, finePointer, revealed }: ExtraCtx): () => void {
   const title = document.querySelector<HTMLElement>('#hero-title');
   const words = title ? Array.from(title.querySelectorAll<HTMLElement>('.line__inner')) : [];
   if (!title || !words.length) return noop;
@@ -100,7 +96,6 @@ function nameWave({ reason, finePointer }: ExtraCtx): () => void {
   let alive = true;
   let running = false;
   let lastEnd = Number.NEGATIVE_INFINITY;
-  let lead: number | undefined;
   let undo: Array<() => void> = [];
   const playing = new Set<{ cancel: () => void }>();
 
@@ -160,13 +155,14 @@ function nameWave({ reason, finePointer }: ExtraCtx): () => void {
 
   // El mouse puede entrar mientras el nombre todavía sube (la entrada dura ~1.2 s): la ola espera a
   // que termine, igual que la del arranque. Si empezara antes, se levantaría el recorte de `.line`
-  // (que esconde la palabra mientras sube) y se la vería asomar sin recortar.
+  // (que esconde la palabra mientras sube) y se la vería asomar sin recortar. La cortina no frena el
+  // puntero: si entra mientras tapa, la ola también espera a que se vaya.
   let pending = false;
   const onEnter = async () => {
     if (running || pending || performance.now() - lastEnd < COOLDOWN_MS) return;
     pending = true;
     try {
-      await entranceDone();
+      await Promise.all([entranceDone(), revealed]);
       // El puntero pudo irse mientras tanto: sin nadie encima no hay a quién responderle.
       if (alive && title.matches(':hover')) await wave();
     } finally {
@@ -177,17 +173,13 @@ function nameWave({ reason, finePointer }: ExtraCtx): () => void {
   if (finePointer) title.addEventListener('pointerenter', onPointerEnter);
 
   // Se espera a que termine la entrada CSS del nombre (si la carga fue lenta, todavía está subiendo)
-  // y, al cambiar de paleta, a que la cortina se abra. Si el nombre quedó fuera de la vista (recarga
+  // y, al cambiar de paleta, a que la cortina se vaya. Si el nombre quedó fuera de la vista (recarga
   // a mitad de página) no hay nada que ver y la ola no corre.
   const start = async () => {
     const { top, bottom } = title.getBoundingClientRect();
     const visible = bottom > 0 && top < innerHeight;
     if (!visible || (reason === 'load' && waved)) return;
-    await entranceDone();
-    if (reason === 'switch')
-      await new Promise((resolve) => {
-        lead = window.setTimeout(resolve, SWITCH_LEAD_MS);
-      });
+    await Promise.all([entranceDone(), revealed]);
     if (!alive) return;
     waved = true;
     await wave();
@@ -196,7 +188,6 @@ function nameWave({ reason, finePointer }: ExtraCtx): () => void {
 
   return () => {
     alive = false;
-    clearTimeout(lead);
     title.removeEventListener('pointerenter', onPointerEnter);
     finish();
   };
@@ -276,18 +267,7 @@ function trail(gsap: Gsap): () => void {
   };
 }
 
-const caramelo: Extra = (ctx) => {
-  const parts = [() => nameWave(ctx), blobs, ...(ctx.finePointer ? [() => trail(ctx.gsap)] : [])];
-  const offs: Array<() => void> = [];
-  // Una pieza que falla no se lleva puestas a las otras.
-  for (const start of parts) {
-    try {
-      offs.push(start());
-    } catch (err) {
-      console.error('[extras]', err);
-    }
-  }
-  return () => dispose(offs);
-};
+const caramelo: Extra = (ctx) =>
+  startParts([() => nameWave(ctx), blobs, ...(ctx.finePointer ? [() => trail(ctx.gsap)] : [])]);
 
 export default caramelo;

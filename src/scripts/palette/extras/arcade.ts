@@ -1,7 +1,7 @@
 import type { Gsap, ScrollTriggerT } from '../../motion/types';
 import { visualClone } from '../a11y';
-import { dispose } from '../dispose';
-import type { Extra } from '../extras';
+import { noop, startParts } from '../dispose';
+import type { Extra, ExtraCtx } from '../extras';
 
 // Arcade: la pantalla de una consola de 8 bits.
 //   - Scanlines fijas sobre todo el sitio (CSS en styles/extras.css; acá solo se crea la capa).
@@ -11,8 +11,6 @@ import type { Extra } from '../extras';
 
 const COUNT_SECONDS = 0.96;
 const MAX_TICKS = 24;
-
-const noop = () => {};
 
 /** Datos que ya contaron. Vive con el módulo: al volver a Arcade no se repite. */
 const counted = new WeakSet<Element>();
@@ -52,7 +50,7 @@ function blockBar(ScrollTrigger: ScrollTriggerT): () => void {
 }
 
 /** "24 migraciones..." -> cuenta el 24 al entrar en la vista, con el número ya en 00 desde antes. */
-function countUp(gsap: Gsap, ScrollTrigger: ScrollTriggerT, item: HTMLElement): () => void {
+function countUp({ gsap, ScrollTrigger, revealed }: ExtraCtx, item: HTMLElement): () => void {
   const parts = /^(\d+)([\s\S]*)$/.exec((item.textContent ?? '').trim());
   const target = parts ? Number(parts[1]) : 0;
   if (!parts || target <= 0 || counted.has(item)) return noop;
@@ -65,8 +63,10 @@ function countUp(gsap: Gsap, ScrollTrigger: ScrollTriggerT, item: HTMLElement): 
   number.textContent = pad(0);
   visual.replaceChildren(number, parts[2]);
 
+  let ended = false;
   let tween: ReturnType<Gsap['to']> | null = null;
   const end = () => {
+    ended = true;
     trigger.kill();
     tween?.kill();
     restore();
@@ -75,42 +75,35 @@ function countUp(gsap: Gsap, ScrollTrigger: ScrollTriggerT, item: HTMLElement): 
     trigger: item,
     start: 'top 90%',
     once: true,
-    onEnter: () => {
-      counted.add(item);
-      const state = { n: 0 };
-      tween = gsap.to(state, {
-        n: target,
-        duration: COUNT_SECONDS,
-        // Saltos de a uno: el número nunca queda "a medio camino".
-        ease: `steps(${Math.min(target, MAX_TICKS)})`,
-        onUpdate: () => {
-          const shown = pad(Math.round(state.n));
-          if (number.textContent !== shown) number.textContent = shown;
-        },
-        onComplete: end,
-      });
-    },
+    // Un dato que ya se ve al cambiar a Arcade cuenta cuando la cortina se va.
+    onEnter: () =>
+      void revealed.then(() => {
+        if (ended) return;
+        counted.add(item);
+        const state = { n: 0 };
+        tween = gsap.to(state, {
+          n: target,
+          duration: COUNT_SECONDS,
+          // Saltos de a uno: el número nunca queda "a medio camino".
+          ease: `steps(${Math.min(target, MAX_TICKS)})`,
+          onUpdate: () => {
+            const shown = pad(Math.round(state.n));
+            if (number.textContent !== shown) number.textContent = shown;
+          },
+          onComplete: end,
+        });
+      }),
   });
   return end;
 }
 
-const arcade: Extra = ({ gsap, ScrollTrigger }) => {
+const arcade: Extra = (ctx) => {
   const facts = Array.from(document.querySelectorAll<HTMLElement>('.facts li'));
-  const parts = [
+  return startParts([
     scanlines,
-    () => blockBar(ScrollTrigger),
-    ...facts.map((item) => () => countUp(gsap, ScrollTrigger, item)),
-  ];
-  const offs: Array<() => void> = [];
-  // Una pieza que falla no se lleva puestas a las otras.
-  for (const start of parts) {
-    try {
-      offs.push(start());
-    } catch (err) {
-      console.error('[extras]', err);
-    }
-  }
-  return () => dispose(offs);
+    () => blockBar(ctx.ScrollTrigger),
+    ...facts.map((item) => () => countUp(ctx, item)),
+  ]);
 };
 
 export default arcade;

@@ -128,3 +128,12 @@ export function setPalette(id: PaletteId, origin?: Origin): Promise<void> {
   running = drain(request);
   return running;
 }
+
+/**
+ * Se resuelve cuando ya no queda ningún cambio en curso: la última cortina se fue (o el controlador
+ * dejó de esperarla). Sin cambios en curso, ya está resuelta. Quien arranca algo al recibir
+ * `palette:change` (los extras) la usa para no animar lo que la cortina todavía tapa.
+ */
+export function settled(): Promise<void> {
+  return running ?? Promise.resolve();
+}

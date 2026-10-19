@@ -1,5 +1,5 @@
 import type { Gsap, ScrollTriggerT } from '../../motion/types';
-import { dispose } from '../dispose';
+import { dispose, startParts } from '../dispose';
 import type { Extra, ExtraCtx } from '../extras';
 
 // Atardecer: un sol baja y el cielo se oscurece a medida que se lee la página.
@@ -19,8 +19,6 @@ import type { Extra, ExtraCtx } from '../extras';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-/** Al cambiar a Atardecer la cortina todavía se está abriendo: los brotes visibles esperan a que se vea. */
-const SWITCH_LEAD_S = 0.45;
 const GROW_S = 0.9;
 
 /**
@@ -135,13 +133,9 @@ function sprout(): SVGSVGElement {
  * `aria-hidden` y no tiene texto). Crece una vez al entrar su título en la vista; el que ya quedó
  * atrás al cargar (recarga a mitad de página) o ya creció antes aparece entero.
  */
-function sprouts(
-  gsap: Gsap,
-  ScrollTrigger: ScrollTriggerT,
-  reason: ExtraCtx['reason'],
-): () => void {
-  const born = performance.now();
-  const offs: Array<() => void> = [];
+function sprouts({ gsap, ScrollTrigger, revealed }: ExtraCtx): () => void {
+  let alive = true;
+  const offs: Array<() => void> = [() => (alive = false)];
 
   // Si algo tira a mitad de camino, se deshace lo que ya se armó: el que llama no recibe el cleanup.
   try {
@@ -161,15 +155,13 @@ function sprouts(
         trigger: title,
         start: 'top 85%',
         once: true,
-        onEnter: () => {
-          grown.add(title);
-          // Al cambiar de paleta, lo que ya se ve espera a que la cortina termine de abrirse.
-          const lead =
-            reason === 'switch'
-              ? Math.max(0, SWITCH_LEAD_S - (performance.now() - born) / 1000)
-              : 0;
-          growing = gsap.to(plant, { scaleY: 1, duration: GROW_S, ease: 'sine.out', delay: lead });
-        },
+        // Al cambiar de paleta, el brote de un título que ya se ve crece cuando la cortina se va.
+        onEnter: () =>
+          void revealed.then(() => {
+            if (!alive) return;
+            grown.add(title);
+            growing = gsap.to(plant, { scaleY: 1, duration: GROW_S, ease: 'sine.out' });
+          }),
       });
       offs.push(() => {
         trigger.kill();
@@ -184,18 +176,7 @@ function sprouts(
   return () => dispose(offs);
 }
 
-const atardecer: Extra = ({ gsap, ScrollTrigger, reason }) => {
-  const parts = [() => sky(ScrollTrigger, reason), () => sprouts(gsap, ScrollTrigger, reason)];
-  const offs: Array<() => void> = [];
-  // Una pieza que falla no se lleva puesta a la otra.
-  for (const start of parts) {
-    try {
-      offs.push(start());
-    } catch (err) {
-      console.error('[extras]', err);
-    }
-  }
-  return () => dispose(offs);
-};
+const atardecer: Extra = (ctx) =>
+  startParts([() => sky(ctx.ScrollTrigger, ctx.reason), () => sprouts(ctx)]);
 
 export default atardecer;
