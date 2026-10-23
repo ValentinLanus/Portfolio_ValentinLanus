@@ -16,7 +16,8 @@ export default {
     projects: 'Projects',
     contact: 'Contact',
     menu: 'Menu',
-    close: 'Close',
+    openMenu: 'Open menu',
+    closeMenu: 'Close menu',
     toTop: 'Back to top',
     lang: { current: 'EN', other: 'ES', otherName: 'Español' },
     palette: {

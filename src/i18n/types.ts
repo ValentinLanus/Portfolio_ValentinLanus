@@ -50,8 +50,11 @@ export interface SiteContent {
     stack: string;
     projects: string;
     contact: string;
+    /** Nombre del diálogo del menú mobile. */
     menu: string;
-    close: string;
+    /** Nombre de la hamburguesa con el menú cerrado y abierto. */
+    openMenu: string;
+    closeMenu: string;
     toTop: string;
     lang: { current: string; other: string; otherName: string };
     palette: {

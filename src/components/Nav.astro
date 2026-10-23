@@ -40,48 +40,69 @@ const items = [
     </nav>
     <LangSwitch locale={locale} lang={nav.lang} />
     <PalettePicker variant="popover" palette={nav.palette} />
-    <button
-      class="nav__toggle"
-      type="button"
-      aria-expanded="false"
-      aria-controls="menu"
-      data-menu-toggle
-    >
-      {nav.menu}
-    </button>
   </div>
 </header>
-<div id="menu" class="menu" role="dialog" aria-modal="true" aria-label={nav.menu} hidden data-menu>
-  <nav aria-label={nav.label}>
-    <ol>
-      {items.map((item, i) => (
-        <li>
-          <a href={item.href} data-menu-link>
-            <span class="mono" aria-hidden="true">
-              0{i + 1}
-            </span>
-            {item.label}
-          </a>
-        </li>
-      ))}
-    </ol>
-  </nav>
-  <PalettePicker variant="group" palette={nav.palette} />
-  <button class="menu__close btn btn--ghost" type="button" data-menu-close>
-    {nav.close}
-  </button>
+{/* La hamburguesa no vive dentro de <header>: la barra es una capa (z 50) y el botón tiene que
+    quedar por encima del menú (z 60) para poder cerrarlo. Va fija sobre el hueco que le deja
+    .nav__inner. Su nombre cambia con el estado (data-label-*), y las líneas se animan por
+    aria-expanded. */}
+<button
+  class="nav__toggle"
+  type="button"
+  aria-expanded="false"
+  aria-controls="menu"
+  aria-label={nav.openMenu}
+  data-label-open={nav.openMenu}
+  data-label-close={nav.closeMenu}
+  data-menu-toggle
+>
+  <span class="burger" aria-hidden="true">
+    <span class="burger__line"></span>
+    <span class="burger__line"></span>
+    <span class="burger__line"></span>
+  </span>
+</button>
+{/* Sin aria-modal: eso esconde a los lectores de pantalla todo lo que está afuera del diálogo, y
+    la hamburguesa (que lo cierra) tiene que seguir alcanzable. El resto de la página queda inerte
+    desde el script. */}
+<div id="menu" class="menu" role="dialog" aria-label={nav.menu} hidden data-menu>
+  <div class="menu__scrim" data-menu-scrim></div>
+  <div class="menu__panel" data-menu-panel>
+    <nav aria-label={nav.label}>
+      <ol>
+        {items.map((item, i) => (
+          <li>
+            <a href={item.href} data-menu-link>
+              <span class="mono" aria-hidden="true">
+                0{i + 1}
+              </span>
+              {item.label}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+    <PalettePicker variant="group" palette={nav.palette} />
+  </div>
 </div>
 
 <script>
   const toggle = document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
   const menu = document.querySelector<HTMLElement>('[data-menu]');
-  if (toggle && menu) {
+  const scrim = document.querySelector<HTMLElement>('[data-menu-scrim]');
+  if (toggle && menu && scrim) {
+    const labels = { open: toggle.dataset.labelOpen ?? '', close: toggle.dataset.labelClose ?? '' };
+    const isOpen = () => toggle.getAttribute('aria-expanded') === 'true';
     const focusables = () => Array.from(menu.querySelectorAll<HTMLElement>('a, button'));
-    // Hermanos de <body> a los que este menú les puso `inert`: se restauran solo esos.
+    // La hamburguesa sigue viva con el menú abierto (lo cierra) y va antes que los links.
+    const ring = () => [toggle, ...focusables()];
+    // Hermanos de <body> a los que este menú les puso `inert`: se restauran solo esos. La
+    // hamburguesa queda afuera de la lista.
     let inerted: HTMLElement[] = [];
     const lockBackground = () => {
       inerted = Array.from(document.body.children).filter(
-        (el): el is HTMLElement => el instanceof HTMLElement && el !== menu && !el.inert,
+        (el): el is HTMLElement =>
+          el instanceof HTMLElement && el !== menu && el !== toggle && !el.inert,
       );
       inerted.forEach((el) => (el.inert = true));
     };
@@ -90,49 +111,79 @@ const items = [
       inerted = [];
     };
     const pullFocusIn = (e: FocusEvent) => {
-      if (e.target instanceof Node && !menu.contains(e.target)) focusables()[0]?.focus();
+      if (e.target instanceof Node && e.target !== toggle && !menu.contains(e.target))
+        focusables()[0]?.focus({ preventScroll: true });
     };
+    // Cada apertura o cierre toma un número: un cierre al que lo pisó una apertura nueva (se tocó
+    // la hamburguesa a mitad de camino) no esconde el menú cuando termina.
+    let run = 0;
+    const setExpanded = (on: boolean) => {
+      toggle.setAttribute('aria-expanded', String(on));
+      toggle.setAttribute('aria-label', on ? labels.close : labels.open);
+    };
+
     const open = () => {
+      run++;
+      menu.inert = false;
       menu.hidden = false;
+      // El panel tiene que pintarse afuera antes de pasar a "abierto": sin esto no hay recorrido.
+      void menu.offsetWidth;
+      menu.dataset.state = 'open';
       lockBackground();
-      toggle.setAttribute('aria-expanded', 'true');
+      setExpanded(true);
       document.body.style.overflow = 'hidden';
       document.addEventListener('focusin', pullFocusIn);
-      focusables()[0]?.focus();
+      // preventScroll: el panel todavía está afuera de la pantalla y el foco no tiene que moverlo.
+      focusables()[0]?.focus({ preventScroll: true });
     };
-    const close = (returnFocus = true) => {
-      menu.hidden = true;
+    // El menú se esconde recién cuando terminó de salir. Sin transición (reduced motion) no hay
+    // animaciones que esperar y se esconde en el acto.
+    const close = (returnFocus = true, animate = true) => {
+      const mine = ++run;
       document.removeEventListener('focusin', pullFocusIn);
       unlockBackground();
-      toggle.setAttribute('aria-expanded', 'false');
+      setExpanded(false);
       document.body.style.overflow = '';
       if (returnFocus) toggle.focus();
+      menu.inert = true;
+      delete menu.dataset.state;
+      const hide = () => {
+        if (mine !== run) return;
+        menu.hidden = true;
+        menu.inert = false;
+      };
+      if (!animate) return hide();
+      const running = menu
+        .getAnimations({ subtree: true })
+        .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity);
+      void Promise.allSettled(running.map((a) => a.finished)).then(hide);
     };
-    toggle.addEventListener('click', open);
-    menu.querySelector('[data-menu-close]')?.addEventListener('click', () => close());
+
+    toggle.addEventListener('click', () => (isOpen() ? close() : open()));
+    scrim.addEventListener('click', () => close());
     menu
       .querySelectorAll('[data-menu-link]')
       .forEach((a) => a.addEventListener('click', () => close(false)));
     document.addEventListener('keydown', (e) => {
-      if (menu.hidden) return;
+      if (!isOpen()) return;
       if (e.key === 'Escape') return close();
       if (e.key !== 'Tab') return;
-      const f = focusables();
+      const f = ring();
       const first = f[0];
       const last = f[f.length - 1];
-      if (!menu.contains(document.activeElement)) {
+      if (!f.includes(document.activeElement as HTMLElement)) {
         e.preventDefault();
-        (e.shiftKey ? last : first).focus();
+        (e.shiftKey ? last : focusables()[0]).focus({ preventScroll: true });
       } else if (e.shiftKey && document.activeElement === first) {
         e.preventDefault();
-        last.focus();
+        last.focus({ preventScroll: true });
       } else if (!e.shiftKey && document.activeElement === last) {
         e.preventDefault();
-        first.focus();
+        first.focus({ preventScroll: true });
       }
     });
     matchMedia('(min-width: 768px)').addEventListener('change', (e) => {
-      if (e.matches && !menu.hidden) close(false);
+      if (e.matches && !menu.hidden) close(false, false);
     });
   }
 </script>
@@ -178,31 +229,120 @@ const items = [
   .menu .mono {
     color: var(--accent);
   }
+
+  /* Hamburguesa. Sin borde: solo las tres líneas, en el color del texto (contrasta con la barra
+     en los cinco temas). El botón mide 44 x 44 y el ícono 22 de ancho, así que sobresale 11 px
+     del margen: se corre ese tanto para que las líneas queden alineadas con el resto de la página.
+     z-index 65: arriba del menú (60) y de su capa oscura, abajo de la barra de progreso (70). */
   .nav__toggle {
     display: none;
+    position: fixed;
+    z-index: 65;
+    top: calc((var(--nav-h) - 44px) / 2);
+    right: calc(var(--gutter) - 11px);
     align-items: center;
-    min-height: 44px;
-    padding: 0 14px;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
     background: none;
-    border: 1px solid var(--border-ui);
+    border: 0;
     border-radius: var(--radius);
+    color: var(--text);
     cursor: pointer;
+    transition:
+      background-color 0.2s,
+      transform 0.15s var(--ease-out);
   }
+  .nav__toggle:active {
+    background: color-mix(in srgb, var(--text) 14%, transparent);
+    transform: scale(0.96);
+  }
+  @media (hover: hover) {
+    .nav__toggle:hover {
+      background: color-mix(in srgb, var(--text) 10%, transparent);
+    }
+  }
+  .burger {
+    position: relative;
+    display: block;
+    width: 22px;
+    height: 16px;
+  }
+  .burger__line {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    border-radius: 1px;
+    background: currentColor;
+    transition:
+      transform 0.3s var(--ease-out),
+      opacity 0.3s var(--ease-out);
+  }
+  .burger__line:nth-child(1) {
+    top: 0;
+  }
+  .burger__line:nth-child(2) {
+    top: 7px;
+  }
+  .burger__line:nth-child(3) {
+    top: 14px;
+  }
+  /* Abierto: la de arriba y la de abajo bajan y suben al centro y giran en sentidos opuestos (una
+     X); la del medio se desvanece. Todo sale de aria-expanded, que es lo que lee el lector. */
+  .nav__toggle[aria-expanded='true'] .burger__line:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+  }
+  .nav__toggle[aria-expanded='true'] .burger__line:nth-child(2) {
+    opacity: 0;
+  }
+  .nav__toggle[aria-expanded='true'] .burger__line:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+  }
+
+  /* Menú: una capa de pantalla completa (z 60) con la capa oscura y el panel lateral adentro.
+     overflow: clip, no hidden: el panel espera afuera de la pantalla y nada puede desplazar la capa
+     para mostrarlo (ni el foco). */
   .menu {
     position: fixed;
     inset: 0;
     z-index: 60;
-    background: var(--bg);
-    padding: calc(var(--nav-h) + 24px) var(--gutter) 32px;
+    overflow: hidden; /* navegadores sin clip */
+    overflow: clip;
+  }
+  .menu[hidden] {
+    display: none;
+  }
+  .menu__scrim {
+    position: absolute;
+    inset: 0;
+    /* El fondo del tema hundido hacia el negro, translúcido: oscurece la página sin taparla. */
+    background: color-mix(in srgb, color-mix(in srgb, var(--bg) 30%, #000) 62%, transparent);
+    opacity: 0;
+    transition: opacity 0.3s var(--ease-out);
+  }
+  .menu__panel {
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: min(82%, 420px);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     gap: 24px;
+    padding: calc(var(--nav-h) + 24px) var(--gutter) max(32px, env(safe-area-inset-bottom));
+    background: var(--bg);
+    border-left: 1px solid var(--border);
     overflow-y: auto;
     overscroll-behavior: contain;
+    transform: translateX(100%);
+    transition: transform 0.3s var(--ease-out);
   }
-  .menu[hidden] {
-    display: none;
+  .menu[data-state='open'] .menu__scrim {
+    opacity: 1;
+  }
+  .menu[data-state='open'] .menu__panel {
+    transform: none;
   }
   .menu ol {
     display: grid;
@@ -217,17 +357,16 @@ const items = [
     font-weight: 600;
     text-decoration: none;
   }
-  .menu__close {
-    align-self: flex-start;
-    background: none;
-    cursor: pointer;
-  }
 
-  /* Con el selector de paleta, de 768 a 1023 px la barra no tiene lugar para los 28 px de siempre
+  /* Con el selector de tema, de 768 a 1023 px la barra no tiene lugar para los 28 px de siempre
      entre links: se achican los espacios para que el nombre y los links no se partan. */
   @media (min-width: 768px) {
     .nav__name {
       white-space: nowrap;
+    }
+    .nav__toggle,
+    .menu {
+      display: none;
     }
   }
   @media (min-width: 768px) and (max-width: 1023px) {
@@ -246,6 +385,12 @@ const items = [
     :global(.js) .nav__toggle {
       display: inline-flex;
     }
+    /* El hueco del botón fijo: el ancho de las líneas, para que el idioma no quede debajo. */
+    :global(.js) .nav__inner::after {
+      content: '';
+      flex: none;
+      width: 22px;
+    }
     :global(html:not(.js)) .nav {
       position: static;
       height: auto;
@@ -257,6 +402,17 @@ const items = [
     :global(html:not(.js)) .nav__links ol {
       flex-wrap: wrap;
       gap: 4px 16px;
+    }
+  }
+
+  /* Reduced motion: el panel aparece donde va, la capa oscura entra de golpe y la hamburguesa
+     cambia a X sin recorrer el camino. */
+  @media (prefers-reduced-motion: reduce) {
+    .nav__toggle,
+    .burger__line,
+    .menu__scrim,
+    .menu__panel {
+      transition: none;
     }
   }
 </style>
