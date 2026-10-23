@@ -11,9 +11,9 @@ const centreOf = (el: Element) => {
 
 /**
  * Marca la opción de `now` en todos los selectores de la página, y la nombra en el botón del
- * popover: "Cambiar paleta (actual: Arcade)". Al elegir se llama con la elegida antes de devolver el
- * foco al botón (el cambio en sí espera a la cortina): así el lector de pantalla anuncia la paleta
- * nueva y no la vieja. `palette:change` vuelve a marcar la que quedó puesta, venga de donde venga.
+ * popover: "Cambiar tema (actual: Arcade)". Al elegir se llama con la elegida antes de devolver el
+ * foco al botón (el cambio en sí espera a la cortina): así el lector de pantalla anuncia el tema
+ * nuevo y no el viejo. `palette:change` vuelve a marcar el que quedó puesto, venga de donde venga.
  */
 function markPalette(now: PaletteId) {
   document.querySelectorAll<HTMLElement>('[data-palette-option]').forEach((option) => {

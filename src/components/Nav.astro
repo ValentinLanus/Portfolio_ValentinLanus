@@ -250,6 +250,8 @@ const items = [
     border-radius: var(--radius);
     color: var(--text);
     cursor: pointer;
+    /* Sin el recuadro azul que Chrome Android pinta al tocar: el feedback es el :active. */
+    -webkit-tap-highlight-color: transparent;
     transition:
       background-color 0.2s,
       transform 0.15s var(--ease-out);
@@ -413,6 +415,17 @@ const items = [
     .menu__scrim,
     .menu__panel {
       transition: none;
+    }
+  }
+
+  /* Colores forzados (alto contraste de Windows): el navegador pisa todos los fondos con el color
+     del lienzo y las líneas, que son fondos, desaparecerían. Se las saca del tratamiento y se
+     pintan con el color de texto de un botón. Va al final: misma especificidad que la regla de
+     arriba, gana por orden. */
+  @media (forced-colors: active) {
+    .burger__line {
+      forced-color-adjust: none;
+      background: ButtonText;
     }
   }
 </style>

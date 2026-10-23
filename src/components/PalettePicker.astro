@@ -132,12 +132,18 @@ const buttonLabel = palette.button.replace('{name}', palette.names[DEFAULT_PALET
     border-radius: var(--radius);
     color: var(--text);
     cursor: pointer;
+    /* Sin el recuadro azul que Chrome Android pinta al tocar (también se ve en una tablet). */
+    -webkit-tap-highlight-color: transparent;
     transition:
       background-color 0.2s,
       transform 0.15s var(--ease-out);
   }
-  .palette__button:hover {
-    background: color-mix(in srgb, var(--text) 10%, transparent);
+  /* Solo con puntero que puede pasar por encima: en una tablet táctil el :hover queda pegado
+     después del toque. */
+  @media (hover: hover) {
+    .palette__button:hover {
+      background: color-mix(in srgb, var(--text) 10%, transparent);
+    }
   }
   .palette__button:active {
     background: color-mix(in srgb, var(--text) 14%, transparent);
