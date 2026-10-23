@@ -7,8 +7,8 @@ interface Props {
   palette: SiteContent['nav']['palette'];
 }
 const { variant, palette } = Astro.props;
-// El nombre del botón dice cuál es la paleta activa (al volver el foco tras elegir, el lector de
-// pantalla la anuncia). Sale con la de fábrica; picker.ts lo actualiza con la plantilla.
+// El nombre del botón dice cuál es el tema activo (al volver el foco tras elegir, el lector de
+// pantalla lo anuncia). Sale con el de fábrica; picker.ts lo actualiza con la plantilla.
 const buttonLabel = palette.button.replace('{name}', palette.names[DEFAULT_PALETTE]);
 ---
 
@@ -23,6 +23,8 @@ const buttonLabel = palette.button.replace('{name}', palette.names[DEFAULT_PALET
       aria-label={buttonLabel}
       data-palette-button={palette.button}
     >
+      {/* Brocha dibujada a mano en una grilla de 24: mango, virola y cerda, inclinada 45 grados con la
+          punta hacia abajo a la izquierda. Se dibuja derecha y se gira entera. */}
       <svg
         class="palette__icon"
         viewBox="0 0 24 24"
@@ -31,10 +33,11 @@ const buttonLabel = palette.button.replace('{name}', palette.names[DEFAULT_PALET
         aria-hidden="true"
         focusable="false"
       >
-        <circle class="palette__ring" cx="12" cy="12" r="9.25" />
-        <circle class="palette__dot palette__dot--1" cx="12" cy="8" r="2" />
-        <circle class="palette__dot palette__dot--2" cx="8.25" cy="14" r="2" />
-        <circle class="palette__dot palette__dot--3" cx="15.75" cy="14" r="2" />
+        <g transform="rotate(45 12 12)">
+          <path class="palette__handle" d="M10.8 2.7a1.2 1.2 0 0 1 2.4 0l.6 6.8h-3.6z" />
+          <path class="palette__ferrule" d="M9 9.5h6V13H9z" />
+          <path class="palette__tuft" d="M9 13h6c0 4-1 7-3 9.5-2-2.5-3-5.5-3-9.5z" />
+        </g>
       </svg>
     </button>
     {/* tabindex="-1": un clic en el relleno del menú lo enfoca a él en vez de dejar el foco en el
@@ -105,12 +108,15 @@ const buttonLabel = palette.button.replace('{name}', palette.names[DEFAULT_PALET
 
 <style>
   /* Contraste (WCAG 1.4.11): los bordes que delimitan o marcan usan --text-3 o --accent, que
-     llegan a 4.4:1 sobre --surface y --surface-2 en las cinco paletas. --border-ui de Arcade
-     (#6b78a8) da 2.77:1 sobre --surface y 2.43:1 sobre --surface-2: solo se usa sobre --bg. */
+     llegan a 4.4:1 sobre --surface y --surface-2 en los cinco temas. --border-ui de Arcade
+     (#6b78a8) da 2.77:1 sobre --surface y 2.43:1 sobre --surface-2: no se usa de borde acá. */
 
-  /* Botón de la barra. Mismo molde que el botón "Menú" del nav (44 px, --border-ui sobre --bg). */
+  /* Botón de la barra: sin borde, solo la brocha. 44 x 44 de área táctil con un ícono de 20, así
+     que sobresale 12 px del margen: se corre ese tanto para que la brocha quede alineada con el
+     resto de la página (el popover se alinea al botón, no a la brocha). */
   .palette {
     position: relative;
+    margin-right: -12px;
     --ring: var(--text-3);
     --pop-shadow: color-mix(in srgb, color-mix(in srgb, var(--bg) 40%, #000) 60%, transparent);
   }
@@ -122,47 +128,45 @@ const buttonLabel = palette.button.replace('{name}', palette.names[DEFAULT_PALET
     height: 44px;
     padding: 0;
     background: none;
-    border: 1px solid var(--border-ui);
+    border: 0;
     border-radius: var(--radius);
     color: var(--text);
     cursor: pointer;
     transition:
-      border-color 0.2s,
       background-color 0.2s,
       transform 0.15s var(--ease-out);
   }
   .palette__button:hover {
-    border-color: var(--text-2);
-  }
-  .palette__button[aria-expanded='true'] {
-    background: var(--surface);
-    border-color: var(--accent);
+    background: color-mix(in srgb, var(--text) 10%, transparent);
   }
   .palette__button:active {
+    background: color-mix(in srgb, var(--text) 14%, transparent);
     transform: scale(0.96);
   }
-  /* El ícono muestra la paleta activa: anillo del color del texto y tres puntos con sus colores. */
-  .palette__ring {
+  .palette__button[aria-expanded='true'] {
+    background: var(--surface-2);
+  }
+  /* El ícono: contorno en el color del texto y la cerda llena con el --accent del tema. Los dos
+     contrastan 3:1 o más con la barra en los cinco temas. El relleno se declara en el svg para que
+     el grupo y las piezas no caigan en el negro por defecto. */
+  .palette__icon {
     fill: none;
     stroke: currentColor;
     stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
-  .palette__dot--1 {
+  .palette__tuft {
     fill: var(--accent);
   }
-  .palette__dot--2 {
-    fill: var(--accent-2);
-  }
-  .palette__dot--3 {
-    fill: currentColor;
-  }
 
-  /* Popover. Alineado al borde derecho del botón, que ya está contra el borde de la barra. */
+  /* Popover. Alineado al margen derecho de la página (donde termina la brocha), no al botón, que
+     sobresale 12 px. */
   .palette__menu {
     position: absolute;
     z-index: 1;
     top: calc(100% + 14px);
-    right: 0;
+    right: 12px;
     display: grid;
     gap: 2px;
     min-width: 220px;

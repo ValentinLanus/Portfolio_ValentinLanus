@@ -20,8 +20,8 @@ export default {
     toTop: 'Back to top',
     lang: { current: 'EN', other: 'ES', otherName: 'Español' },
     palette: {
-      button: 'Change palette (current: {name})',
-      title: 'Palette',
+      button: 'Change theme (current: {name})',
+      title: 'Theme',
       names: {
         terminal: 'Terminal',
         arcade: 'Arcade',

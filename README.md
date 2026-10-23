@@ -20,7 +20,7 @@ Las capturas son recreaciones con datos y nombres de ejemplo: no muestran datos 
 - **Astro, sitio estático.** No hay framework de UI: cada página es HTML generado en el build, así que el contenido se lee aunque el JavaScript no cargue.
 - **Bilingüe con el i18n de Astro.** Los textos de cada idioma viven en `src/i18n/` y comparten un mismo tipo, así que el chequeo de tipos avisa si a un idioma le falta un texto.
 - **Animaciones con GSAP y ScrollTrigger**, con scroll suave (Lenis) en desktop. Se cargan cuando el navegador queda libre, para no frenar la primera carga, y tienen una versión más liviana en mobile. Con "reducir movimiento" activado en el sistema, el sitio queda estático.
-- **Cinco paletas** (Terminal, Arcade, Caramelo, Lava y Atardecer) que se eligen desde el nav. Cada una trae sus colores, su forma de animar las entradas, una transición propia al elegirla (hecha con [Motion](https://motion.dev)) y animaciones que solo se descargan cuando esa paleta está activa.
+- **Cinco temas** (Terminal, Arcade, Caramelo, Lava y Atardecer) que se eligen desde el nav. Cada uno trae sus colores, su forma de animar las entradas, una transición propia al elegirlo (hecha con [Motion](https://motion.dev)) y animaciones que solo se descargan cuando ese tema está activo.
 - **Imágenes optimizadas** con el componente `<Picture>` de Astro (AVIF y WebP en varios tamaños).
 - **Deploy en Vercel**, con headers de seguridad definidos en `vercel.json`.
 
